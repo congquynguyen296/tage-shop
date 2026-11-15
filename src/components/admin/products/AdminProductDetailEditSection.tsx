@@ -13,8 +13,8 @@ interface AdminProductDetailEditSectionProps {
   errors: Record<string, string>;
   isSavingProduct: boolean;
   hasProductChanges: boolean;
-  uploadingZone: UploadMediaZone | null;
-  uploadError: string;
+  uploadingZones: Record<UploadMediaZone, boolean>;
+  uploadErrors: Record<UploadMediaZone, string>;
   onUpdateField: <K extends keyof UpsertProductInput>(
     field: K,
     val: UpsertProductInput[K]
@@ -44,8 +44,8 @@ export function AdminProductDetailEditSection({
   errors,
   isSavingProduct,
   hasProductChanges,
-  uploadingZone,
-  uploadError,
+  uploadingZones,
+  uploadErrors,
   onUpdateField,
   onUploadImages,
   onSaveChanges,
@@ -248,9 +248,9 @@ export function AdminProductDetailEditSection({
         description="Primary photos displayed on storefront catalog and product pages. Upload directly to Cloudinary or paste URL."
         badgePrefix="#"
         images={editForm.images || []}
-        isUploading={uploadingZone === "official"}
+        isUploading={uploadingZones.official}
         error={errors.images}
-        uploadError={uploadingZone === "official" ? undefined : uploadError}
+        uploadError={uploadErrors.official}
         onUploadFiles={(files) => onUploadImages(files, "official")}
         onAddUrl={handleAddOfficialUrl}
         onRemoveImage={handleRemoveOfficialImage}
@@ -263,7 +263,8 @@ export function AdminProductDetailEditSection({
         description="Supplemental archive photos for detail inspection or customer share links."
         badgePrefix="T"
         images={editForm.temporaryImages || []}
-        isUploading={uploadingZone === "temporary"}
+        isUploading={uploadingZones.temporary}
+        uploadError={uploadErrors.temporary}
         onUploadFiles={(files) => onUploadImages(files, "temporary")}
         onAddUrl={handleAddTempUrl}
         onRemoveImage={handleRemoveTempImage}
@@ -275,7 +276,10 @@ export function AdminProductDetailEditSection({
         <button
           type="button"
           disabled={
-            isSavingProduct || uploadingZone !== null || !hasProductChanges
+            isSavingProduct ||
+            uploadingZones.official ||
+            uploadingZones.temporary ||
+            !hasProductChanges
           }
           onClick={onSaveChanges}
           className="btn text-xs py-2.5 px-6 disabled:opacity-45"

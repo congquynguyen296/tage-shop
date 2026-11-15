@@ -85,10 +85,23 @@ export function useAdminProducts() {
   const [editProd, setEditProd] = useState<UpsertProductInput>(INITIAL_PRODUCT_FORM);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [editErrors, setEditErrors] = useState<Record<string, string>>({});
-  const [uploadingZone, setUploadingZone] = useState<UploadMediaZone | null>(
-    null
-  );
-  const [uploadError, setUploadError] = useState("");
+  const [uploadingCounts, setUploadingCounts] = useState<
+    Record<UploadMediaZone, number>
+  >({
+    official: 0,
+    temporary: 0,
+  });
+  const [uploadErrors, setUploadErrors] = useState<
+    Record<UploadMediaZone, string>
+  >({
+    official: "",
+    temporary: "",
+  });
+
+  const uploadingZones: Record<UploadMediaZone, boolean> = {
+    official: uploadingCounts.official > 0,
+    temporary: uploadingCounts.temporary > 0,
+  };
 
   // Client-side filter & pagination state
   const [categoryFilter, setCategoryFilter] = useState<string>("All");
@@ -228,7 +241,7 @@ export function useAdminProducts() {
   const resetForm = () => {
     setNewProd(INITIAL_PRODUCT_FORM);
     setErrors({});
-    setUploadError("");
+    setUploadErrors({ official: "", temporary: "" });
   };
 
   const handleUploadNewProductImages = async (
@@ -241,14 +254,16 @@ export function useAdminProducts() {
         ...prev,
         name: "Please enter Product Name first to create the product image folder",
       }));
-      setUploadError(
-        "Please enter Product Name above before uploading photos so they are saved in this product's folder."
-      );
+      setUploadErrors((prev) => ({
+        ...prev,
+        [zone]:
+          "Please enter Product Name above before uploading photos so they are saved in this product's folder.",
+      }));
       return;
     }
 
-    setUploadError("");
-    setUploadingZone(zone);
+    setUploadErrors((prev) => ({ ...prev, [zone]: "" }));
+    setUploadingCounts((prev) => ({ ...prev, [zone]: prev[zone] + 1 }));
     try {
       const currentOfficial = newProd.images || [];
       const isOnlyDefaultPlaceholder =
@@ -290,17 +305,20 @@ export function useAdminProducts() {
         });
       }
       toast.success(
-        `Uploaded ${uploadedUrls.length} photo${
+        `Uploaded ${uploadedUrls.length} ${zone === "official" ? "official" : "temp"} photo${
           uploadedUrls.length > 1 ? "s" : ""
         }`
       );
     } catch (err) {
       const msg =
         err instanceof Error ? err.message : "Failed to upload images";
-      setUploadError(msg);
+      setUploadErrors((prev) => ({ ...prev, [zone]: msg }));
       toast.error(msg);
     } finally {
-      setUploadingZone(null);
+      setUploadingCounts((prev) => ({
+        ...prev,
+        [zone]: Math.max(0, prev[zone] - 1),
+      }));
     }
   };
 
@@ -309,8 +327,8 @@ export function useAdminProducts() {
     zone: UploadMediaZone
   ) => {
     if (!files || files.length === 0) return;
-    setUploadError("");
-    setUploadingZone(zone);
+    setUploadErrors((prev) => ({ ...prev, [zone]: "" }));
+    setUploadingCounts((prev) => ({ ...prev, [zone]: prev[zone] + 1 }));
     try {
       const productName = editProd.name.trim() || editingProduct?.name || "";
       const existingCount =
@@ -344,17 +362,20 @@ export function useAdminProducts() {
         });
       }
       toast.success(
-        `Uploaded ${uploadedUrls.length} photo${
+        `Uploaded ${uploadedUrls.length} ${zone === "official" ? "official" : "temp"} photo${
           uploadedUrls.length > 1 ? "s" : ""
         }`
       );
     } catch (err) {
       const msg =
         err instanceof Error ? err.message : "Failed to upload images";
-      setUploadError(msg);
+      setUploadErrors((prev) => ({ ...prev, [zone]: msg }));
       toast.error(msg);
     } finally {
-      setUploadingZone(null);
+      setUploadingCounts((prev) => ({
+        ...prev,
+        [zone]: Math.max(0, prev[zone] - 1),
+      }));
     }
   };
 
@@ -362,8 +383,8 @@ export function useAdminProducts() {
     files: File[]
   ): Promise<string[]> => {
     if (!files || files.length === 0) return [];
-    setUploadError("");
-    setUploadingZone("temporary");
+    setUploadErrors((prev) => ({ ...prev, temporary: "" }));
+    setUploadingCounts((prev) => ({ ...prev, temporary: prev.temporary + 1 }));
     try {
       const productName = sharingProduct?.name || "";
       const existingCount = sharingProduct?.temporaryImages?.length || 0;
@@ -382,11 +403,14 @@ export function useAdminProducts() {
     } catch (err) {
       const msg =
         err instanceof Error ? err.message : "Failed to upload images";
-      setUploadError(msg);
+      setUploadErrors((prev) => ({ ...prev, temporary: msg }));
       toast.error(msg);
       return [];
     } finally {
-      setUploadingZone(null);
+      setUploadingCounts((prev) => ({
+        ...prev,
+        temporary: Math.max(0, prev.temporary - 1),
+      }));
     }
   };
 
@@ -690,8 +714,8 @@ export function useAdminProducts() {
     statusMessage,
     newProd,
     errors,
-    uploadingZone,
-    uploadError,
+    uploadingZones,
+    uploadErrors,
     updateNewProdField,
     handleUploadNewProductImages,
     handleUploadEditProductImages,

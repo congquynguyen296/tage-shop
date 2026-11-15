@@ -46,8 +46,8 @@ export default function AdminProductsPage() {
     isLoadingCatalog,
     newProd,
     errors,
-    uploadingZone,
-    uploadError,
+    uploadingZones,
+    uploadErrors,
     updateNewProdField,
     handleUploadNewProductImages,
     handleUploadEditProductImages,
@@ -75,7 +75,7 @@ export default function AdminProductsPage() {
         <AdminProductShareModal
           product={sharingProduct}
           actionLoading={actionLoading}
-          isUploading={uploadingZone === "temporary"}
+          isUploading={uploadingZones.temporary}
           onUploadTempFiles={handleUploadShareTempImages}
           onSaveShareLink={handleSaveShareLink}
           onClose={closeShareProduct}
@@ -88,8 +88,8 @@ export default function AdminProductsPage() {
           newProd={newProd}
           errors={errors}
           actionLoading={actionLoading}
-          uploadingZone={uploadingZone}
-          uploadError={uploadError}
+          uploadingZones={uploadingZones}
+          uploadErrors={uploadErrors}
           onUpdateField={updateNewProdField}
           onUploadImages={handleUploadNewProductImages}
           onSubmit={handleCreateProduct}
@@ -104,8 +104,8 @@ export default function AdminProductsPage() {
           editForm={editProd}
           errors={editErrors}
           actionLoading={actionLoading}
-          uploadingZone={uploadingZone}
-          uploadError={uploadError}
+          uploadingZones={uploadingZones}
+          uploadErrors={uploadErrors}
           onUpdateField={updateEditProdField}
           onUploadImages={handleUploadEditProductImages}
           onSubmit={handleUpdateProduct}

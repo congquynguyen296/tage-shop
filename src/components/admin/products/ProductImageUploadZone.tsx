@@ -33,6 +33,9 @@ export function ProductImageUploadZone({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [manualUrl, setManualUrl] = useState("");
   const [isDragging, setIsDragging] = useState(false);
+  const [isLocalUploading, setIsLocalUploading] = useState(false);
+
+  const activeUploading = isUploading || isLocalUploading;
 
   const handleFileInputChange = async (
     e: React.ChangeEvent<HTMLInputElement>
@@ -41,13 +44,18 @@ export function ProductImageUploadZone({
     if (!fileList || fileList.length === 0) return;
     const filesArray = Array.from(fileList);
     e.target.value = "";
-    await onUploadFiles(filesArray);
+    setIsLocalUploading(true);
+    try {
+      await onUploadFiles(filesArray);
+    } finally {
+      setIsLocalUploading(false);
+    }
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!isUploading) {
+    if (!activeUploading) {
       setIsDragging(true);
     }
   };
@@ -62,13 +70,18 @@ export function ProductImageUploadZone({
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
-    if (isUploading) return;
+    if (activeUploading) return;
 
     const droppedFiles = Array.from(e.dataTransfer.files || []).filter((f) =>
       f.type.startsWith("image/")
     );
     if (droppedFiles.length > 0) {
-      await onUploadFiles(droppedFiles);
+      setIsLocalUploading(true);
+      try {
+        await onUploadFiles(droppedFiles);
+      } finally {
+        setIsLocalUploading(false);
+      }
     }
   };
 
@@ -98,14 +111,14 @@ export function ProductImageUploadZone({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onClick={() => {
-          if (!isUploading) {
+          if (!activeUploading) {
             fileInputRef.current?.click();
           }
         }}
         role="button"
         tabIndex={0}
         onKeyDown={(e) => {
-          if ((e.key === "Enter" || e.key === " ") && !isUploading) {
+          if ((e.key === "Enter" || e.key === " ") && !activeUploading) {
             e.preventDefault();
             fileInputRef.current?.click();
           }
@@ -114,7 +127,7 @@ export function ProductImageUploadZone({
           isDragging
             ? "border-black bg-neutral-100"
             : "border-neutral-300 hover:border-black"
-        } ${isUploading ? "opacity-70 cursor-wait" : ""}`}
+        } ${activeUploading ? "opacity-70 cursor-wait" : ""}`}
       >
         <input
           ref={fileInputRef}
@@ -127,7 +140,7 @@ export function ProductImageUploadZone({
 
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 border line bg-neutral-50 flex items-center justify-center shrink-0">
-            {isUploading ? (
+            {activeUploading ? (
               <span className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
             ) : (
               <svg
@@ -148,7 +161,7 @@ export function ProductImageUploadZone({
           </div>
           <div className="text-left">
             <div className="text-xs font-medium uppercase tracking-wider">
-              {isUploading
+              {activeUploading
                 ? "Uploading to Cloudinary..."
                 : "Upload Photos (Cloudinary)"}
             </div>
@@ -161,14 +174,14 @@ export function ProductImageUploadZone({
 
         <button
           type="button"
-          disabled={isUploading}
+          disabled={activeUploading}
           onClick={(e) => {
             e.stopPropagation();
             fileInputRef.current?.click();
           }}
           className="px-3.5 py-2 bg-black text-white text-[11px] tracking-wider uppercase hover:opacity-85 disabled:opacity-50 shrink-0"
         >
-          {isUploading ? "Uploading..." : "+ Select Files"}
+          {activeUploading ? "Uploading..." : "+ Select Files"}
         </button>
       </div>
 
@@ -197,7 +210,7 @@ export function ProductImageUploadZone({
       </div>
 
       {/* Thumbnails Grid */}
-      {(images.length > 0 || isUploading) && (
+      {(images.length > 0 || activeUploading) && (
         <div className="flex flex-wrap gap-3 pt-1">
           {images.map((url, idx) => {
             const isCloudinary = url.includes("res.cloudinary.com");
@@ -251,7 +264,7 @@ export function ProductImageUploadZone({
             );
           })}
 
-          {isUploading && (
+          {activeUploading && (
             <div className="w-20 h-24 border line bg-neutral-200/70 animate-pulse flex items-center justify-center shrink-0">
               <span className="w-4 h-4 border-2 border-neutral-600 border-t-transparent rounded-full animate-spin" />
             </div>

@@ -12,8 +12,8 @@ interface AdminProductEditModalProps {
   editForm: UpsertProductInput;
   errors: Record<string, string>;
   actionLoading: boolean;
-  uploadingZone?: UploadMediaZone | null;
-  uploadError?: string;
+  uploadingZones?: Record<UploadMediaZone, boolean>;
+  uploadErrors?: Record<UploadMediaZone, string>;
   onUpdateField: <K extends keyof UpsertProductInput>(
     field: K,
     val: UpsertProductInput[K]
@@ -42,8 +42,8 @@ export function AdminProductEditModal({
   editForm,
   errors,
   actionLoading,
-  uploadingZone = null,
-  uploadError = "",
+  uploadingZones = { official: false, temporary: false },
+  uploadErrors = { official: "", temporary: "" },
   onUpdateField,
   onUploadImages,
   onSubmit,
@@ -251,9 +251,9 @@ export function AdminProductEditModal({
         description="Primary photos displayed on storefront catalog and product pages. Upload directly to Cloudinary or paste URL."
         badgePrefix="#"
         images={editForm.images || []}
-        isUploading={uploadingZone === "official"}
+        isUploading={uploadingZones.official}
         error={errors.images}
-        uploadError={uploadingZone === "official" ? undefined : uploadError}
+        uploadError={uploadErrors.official}
         onUploadFiles={(files) => onUploadImages(files, "official")}
         onAddUrl={handleAddOfficialUrl}
         onRemoveImage={handleRemoveOfficialImage}
@@ -266,7 +266,8 @@ export function AdminProductEditModal({
         description="Supplemental archive photos for detail inspection or customer share links."
         badgePrefix="T"
         images={editForm.temporaryImages || []}
-        isUploading={uploadingZone === "temporary"}
+        isUploading={uploadingZones.temporary}
+        uploadError={uploadErrors.temporary}
         onUploadFiles={(files) => onUploadImages(files, "temporary")}
         onAddUrl={handleAddTempUrl}
         onRemoveImage={handleRemoveTempImage}
@@ -277,7 +278,11 @@ export function AdminProductEditModal({
       <div className="flex gap-3 pt-3 border-t line">
         <button
           type="button"
-          disabled={actionLoading || uploadingZone !== null}
+          disabled={
+            actionLoading ||
+            uploadingZones.official ||
+            uploadingZones.temporary
+          }
           onClick={onSubmit}
           className="btn text-xs py-2.5 px-6 disabled:opacity-60"
         >

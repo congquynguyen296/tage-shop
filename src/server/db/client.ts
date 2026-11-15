@@ -1,10 +1,12 @@
 import "server-only";
-import "dotenv/config";
+import dotenv from "dotenv";
 import dns from "node:dns";
 import net from "node:net";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
+
+dotenv.config({ path: [".env.local", ".env"] });
 
 // Fix Node 20+ Happy Eyeballs 250ms timeout causing ETIMEDOUT on cross-region (Asia -> US-East) Neon connections
 dns.setDefaultResultOrder("ipv4first");

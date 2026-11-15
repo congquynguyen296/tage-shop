@@ -28,8 +28,8 @@ export default function AdminProductDetailPage({
     closeDeleteModal,
     handleConfirmDelete,
     hasProductChanges,
-    uploadingZone,
-    uploadError,
+    uploadingZones,
+    uploadErrors,
     editForm,
     errors,
     updateField,
@@ -115,7 +115,7 @@ export default function AdminProductDetailPage({
         copiedShare={copiedShare}
         shareErrorMsg={shareErrorMsg}
         isSavingShare={isSavingShare}
-        uploadingZone={uploadingZone}
+        isUploadingTemp={uploadingZones.temporary}
         newQuickTempUrl={newQuickTempUrl}
         onChangeQuickTempUrl={setNewQuickTempUrl}
         onAddQuickTempUrl={handleAddQuickTempUrl}
@@ -134,8 +134,8 @@ export default function AdminProductDetailPage({
         errors={errors}
         isSavingProduct={isSavingProduct}
         hasProductChanges={hasProductChanges}
-        uploadingZone={uploadingZone}
-        uploadError={uploadError}
+        uploadingZones={uploadingZones}
+        uploadErrors={uploadErrors}
         onUpdateField={updateField}
         onUploadImages={handleUploadImages}
         onSaveChanges={handleSaveChanges}

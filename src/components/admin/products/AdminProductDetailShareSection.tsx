@@ -14,7 +14,7 @@ interface AdminProductDetailShareSectionProps {
   copiedShare: boolean;
   shareErrorMsg: string;
   isSavingShare: boolean;
-  uploadingZone: UploadMediaZone | null;
+  isUploadingTemp: boolean;
   newQuickTempUrl: string;
   onChangeQuickTempUrl: (val: string) => void;
   onAddQuickTempUrl: () => void;
@@ -35,7 +35,7 @@ export function AdminProductDetailShareSection({
   copiedShare,
   shareErrorMsg,
   isSavingShare,
-  uploadingZone,
+  isUploadingTemp,
   newQuickTempUrl,
   onChangeQuickTempUrl,
   onAddQuickTempUrl,
@@ -238,13 +238,11 @@ export function AdminProductDetailShareSection({
           />
           <button
             type="button"
-            disabled={uploadingZone === "temporary"}
+            disabled={isUploadingTemp}
             onClick={() => shareTempInputRef.current?.click()}
             className="px-3 py-1.5 bg-black text-white text-[11px] uppercase tracking-wider hover:opacity-85 disabled:opacity-50 shrink-0"
           >
-            {uploadingZone === "temporary"
-              ? "Uploading..."
-              : "+ Upload Temp Photos"}
+            {isUploadingTemp ? "Uploading..." : "+ Upload Temp Photos"}
           </button>
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <input
