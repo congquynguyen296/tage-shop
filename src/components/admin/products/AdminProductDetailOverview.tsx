@@ -152,7 +152,7 @@ export function AdminProductDetailOverview({
           </div>
 
           {/* Key Financial & Media Metrics Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
             <div className="p-3.5 border line bg-neutral-50/60">
               <div className="text-[10px] uppercase tracking-wider mute">
                 Selling Price
@@ -166,30 +166,6 @@ export function AdminProductDetailOverview({
               </div>
               <div className="serif text-2xl mt-1">
                 {costPrice !== undefined ? money(costPrice) : "—"}
-              </div>
-            </div>
-
-            <div className="p-3.5 border line bg-neutral-50/60">
-              <div className="text-[10px] uppercase tracking-wider mute">
-                Est. Margin
-              </div>
-              <div className="serif text-2xl mt-1">
-                {estimatedProfit !== undefined ? (
-                  <span
-                    className={
-                      estimatedProfit >= 0
-                        ? "text-emerald-700"
-                        : "text-red-600"
-                    }
-                  >
-                    {money(estimatedProfit)}{" "}
-                    <span className="text-xs font-mono">
-                      ({profitMarginPercent}%)
-                    </span>
-                  </span>
-                ) : (
-                  "—"
-                )}
               </div>
             </div>
 

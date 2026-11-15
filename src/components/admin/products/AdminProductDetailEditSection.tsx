@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { ProductCategory } from "@/types";
 import { UpsertProductInput, UploadMediaZone } from "@/service/products/schema";
 import { PRODUCT_CATEGORIES } from "@/hooks/useAdminProducts";
@@ -92,24 +93,65 @@ export function AdminProductDetailEditSection({
     onUpdateField("temporaryImages", updated);
   };
 
+  const [isExpanded, setIsExpanded] = useState(true);
+
   return (
-    <div className="card p-6 border line bg-white space-y-6">
-      <div className="flex items-center justify-between pb-3 border-b line">
-        <div>
-          <h2 className="text-xs tracking-widest uppercase font-semibold">
+    <div className="card p-6 border line bg-white">
+      <div className="flex items-center justify-between gap-3">
+        <button
+          type="button"
+          onClick={() => setIsExpanded((prev) => !prev)}
+          className="text-left flex-1 group"
+          aria-expanded={isExpanded}
+        >
+          <h2 className="text-xs tracking-widest uppercase font-semibold group-hover:opacity-75 transition-opacity">
             Edit Product Details & Media Zones
           </h2>
           <p className="mute text-xs mt-0.5">
             Modify product title, pricing, sizes, availability, description, and
             manage Cloudinary photos.
           </p>
+        </button>
+
+        <div className="flex items-center gap-2 shrink-0">
+          {hasProductChanges && (
+            <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 bg-amber-100 text-amber-800 border border-amber-200">
+              Unsaved Changes
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={() => setIsExpanded((prev) => !prev)}
+            aria-label={isExpanded ? "Collapse section" : "Expand section"}
+            className="w-7 h-7 border line flex items-center justify-center hover:border-black transition-colors"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={`transition-transform duration-300 ease-in-out ${
+                isExpanded ? "rotate-180" : "rotate-0"
+              }`}
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
         </div>
-        {hasProductChanges && (
-          <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 bg-amber-100 text-amber-800 border border-amber-200">
-            Unsaved Changes
-          </span>
-        )}
       </div>
+
+      <div
+        className={`grid transition-all duration-300 ease-in-out ${
+          isExpanded
+            ? "grid-rows-[1fr] opacity-100 mt-4 pt-5 border-t line"
+            : "grid-rows-[0fr] opacity-0"
+        }`}
+      >
+        <div className="overflow-hidden space-y-6">
 
       {/* Main Info Fields */}
       <div className="grid md:grid-cols-3 gap-4">
@@ -296,6 +338,8 @@ export function AdminProductDetailEditSection({
             Reset
           </button>
         )}
+      </div>
+        </div>
       </div>
     </div>
   );

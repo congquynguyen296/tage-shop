@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { handleProductImageError } from "@/config/utils";
 import { UploadMediaZone } from "@/service/products/schema";
@@ -47,6 +47,7 @@ export function AdminProductDetailShareSection({
   onSaveAndCopyShareLink,
 }: AdminProductDetailShareSectionProps) {
   const shareTempInputRef = useRef<HTMLInputElement | null>(null);
+  const [isExpanded, setIsExpanded] = useState(true);
 
   const handleShareTempFilesChange = async (
     e: React.ChangeEvent<HTMLInputElement>
@@ -59,35 +60,78 @@ export function AdminProductDetailShareSection({
   };
 
   return (
-    <div className="card p-6 border line bg-white space-y-5">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b line">
-        <div>
-          <h2 className="text-xs tracking-widest uppercase font-semibold">
-            Share Studio · Curated Customer Link
-          </h2>
-          <p className="mute text-xs mt-0.5">
-            Select which Official and Temporary photos appear on this
-            product&apos;s private customer showcase link (
-            <span className="font-mono">/share/[code]</span>).
-          </p>
-        </div>
-        <div className="flex items-center gap-2 text-[11px]">
+    <div className="card p-6 border line bg-white">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <button
+          type="button"
+          onClick={() => setIsExpanded((prev) => !prev)}
+          className="text-left flex items-start sm:items-center justify-between gap-3 flex-1 group"
+          aria-expanded={isExpanded}
+        >
+          <div>
+            <h2 className="text-xs tracking-widest uppercase font-semibold group-hover:opacity-75 transition-opacity">
+              Share Studio · Curated Customer Link
+            </h2>
+            <p className="mute text-xs mt-0.5">
+              Select which Official and Temporary photos appear on this
+              product&apos;s private customer showcase link (
+              <span className="font-mono">/share/[code]</span>).
+            </p>
+          </div>
+        </button>
+
+        <div className="flex items-center gap-2 text-[11px] shrink-0 self-end sm:self-center">
+          {isExpanded && (
+            <>
+              <button
+                type="button"
+                onClick={onSelectAllShareImages}
+                className="px-2.5 py-1 border line hover:border-black uppercase tracking-wider"
+              >
+                Select All
+              </button>
+              <button
+                type="button"
+                onClick={onClearShareImages}
+                className="px-2.5 py-1 border line hover:border-black uppercase tracking-wider mute hover:text-black"
+              >
+                Clear
+              </button>
+            </>
+          )}
           <button
             type="button"
-            onClick={onSelectAllShareImages}
-            className="px-2.5 py-1 border line hover:border-black uppercase tracking-wider"
+            onClick={() => setIsExpanded((prev) => !prev)}
+            aria-label={isExpanded ? "Collapse section" : "Expand section"}
+            className="w-7 h-7 border line flex items-center justify-center hover:border-black transition-colors"
           >
-            Select All
-          </button>
-          <button
-            type="button"
-            onClick={onClearShareImages}
-            className="px-2.5 py-1 border line hover:border-black uppercase tracking-wider mute hover:text-black"
-          >
-            Clear
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={`transition-transform duration-300 ease-in-out ${
+                isExpanded ? "rotate-180" : "rotate-0"
+              }`}
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
           </button>
         </div>
       </div>
+
+      <div
+        className={`grid transition-all duration-300 ease-in-out ${
+          isExpanded
+            ? "grid-rows-[1fr] opacity-100 mt-4 pt-4 border-t line"
+            : "grid-rows-[0fr] opacity-0"
+        }`}
+      >
+        <div className="overflow-hidden space-y-5">
 
       {/* Active Share URL Bar */}
       {shareUrl && savedShareCode && (
@@ -291,6 +335,8 @@ export function AdminProductDetailShareSection({
             ? "Update & Copy Share Link"
             : "Create & Copy Share Link"}
         </button>
+      </div>
+        </div>
       </div>
     </div>
   );
