@@ -1,20 +1,24 @@
 "use client";
 
-import { useState } from "react";
-import { Field } from "@/components/ui/Field";
 import { Product, ProductCategory } from "@/types";
-import { UpsertProductInput } from "@/service/products/schema";
+import { UpsertProductInput, UploadMediaZone } from "@/service/products/schema";
 import { PRODUCT_CATEGORIES } from "@/hooks/useAdminProducts";
+import { Field } from "@/components/ui/Field";
+import { ProductImageUploadZone } from "./ProductImageUploadZone";
+import { AdminCollectionComboSelector } from "./AdminCollectionComboSelector";
 
 interface AdminProductEditModalProps {
   product: Product;
   editForm: UpsertProductInput;
   errors: Record<string, string>;
   actionLoading: boolean;
+  uploadingZone?: UploadMediaZone | null;
+  uploadError?: string;
   onUpdateField: <K extends keyof UpsertProductInput>(
     field: K,
     val: UpsertProductInput[K]
   ) => void;
+  onUploadImages: (files: File[], zone: UploadMediaZone) => Promise<void>;
   onSubmit: () => void;
   onClose: () => void;
 }
@@ -38,20 +42,18 @@ export function AdminProductEditModal({
   editForm,
   errors,
   actionLoading,
+  uploadingZone = null,
+  uploadError = "",
   onUpdateField,
+  onUploadImages,
   onSubmit,
   onClose,
 }: AdminProductEditModalProps) {
-  const [newOfficialUrl, setNewOfficialUrl] = useState("");
-  const [newTempUrl, setNewTempUrl] = useState("");
-
-  const handleAddOfficialImage = () => {
-    if (!newOfficialUrl.trim()) return;
+  const handleAddOfficialUrl = (url: string) => {
     const current = editForm.images || [];
-    if (!current.includes(newOfficialUrl.trim())) {
-      onUpdateField("images", [...current, newOfficialUrl.trim()]);
+    if (!current.includes(url)) {
+      onUpdateField("images", [...current, url]);
     }
-    setNewOfficialUrl("");
   };
 
   const handleRemoveOfficialImage = (index: number) => {
@@ -59,17 +61,24 @@ export function AdminProductEditModal({
     onUpdateField("images", updated);
   };
 
-  const handleAddTempImage = () => {
-    if (!newTempUrl.trim()) return;
+  const handleSetPrimaryOfficialImage = (index: number) => {
+    const current = [...(editForm.images || [])];
+    if (index <= 0 || index >= current.length) return;
+    const [selected] = current.splice(index, 1);
+    onUpdateField("images", [selected, ...current]);
+  };
+
+  const handleAddTempUrl = (url: string) => {
     const current = editForm.temporaryImages || [];
-    if (!current.includes(newTempUrl.trim())) {
-      onUpdateField("temporaryImages", [...current, newTempUrl.trim()]);
+    if (!current.includes(url)) {
+      onUpdateField("temporaryImages", [...current, url]);
     }
-    setNewTempUrl("");
   };
 
   const handleRemoveTempImage = (index: number) => {
-    const updated = (editForm.temporaryImages || []).filter((_, i) => i !== index);
+    const updated = (editForm.temporaryImages || []).filter(
+      (_, i) => i !== index
+    );
     onUpdateField("temporaryImages", updated);
   };
 
@@ -92,7 +101,8 @@ export function AdminProductEditModal({
             <span className="font-mono text-xs mute">ID: {product.id}</span>
           </div>
           <p className="mute text-xs mt-0.5">
-            Update product details, selling price, cost price, category, and manage image zones.
+            Update product details, selling price, cost price, category, and
+            manage Cloudinary image zones.
           </p>
         </div>
         <button
@@ -123,7 +133,9 @@ export function AdminProductEditModal({
         />
         <Field
           label="Cost Price ($ USD) (Optional)"
-          value={editForm.costPrice !== undefined ? String(editForm.costPrice) : ""}
+          value={
+            editForm.costPrice !== undefined ? String(editForm.costPrice) : ""
+          }
           onChange={(v) =>
             onUpdateField("costPrice", v ? Number(v) : undefined)
           }
@@ -168,12 +180,24 @@ export function AdminProductEditModal({
                 Mark as Sold Out
               </span>
               <p className="mute text-[10px]">
-                When enabled, the product displays as Sold Out and ordering is disabled on the storefront.
+                When enabled, the product displays as Sold Out and ordering is
+                disabled on the storefront.
               </p>
             </div>
           </label>
         </div>
       </div>
+
+      {/* Collection Combo Selector (Only visible when category === "Collection") */}
+      <AdminCollectionComboSelector
+        category={editForm.category}
+        currentProductId={product.id}
+        selectedComboIds={editForm.comboItemIds || []}
+        comboTitle={editForm.comboTitle}
+        onChangeComboIds={(ids) => onUpdateField("comboItemIds", ids)}
+        onChangeComboTitle={(title) => onUpdateField("comboTitle", title)}
+        onApplySumPrice={(sum) => onUpdateField("price", sum)}
+      />
 
       {/* Sizes Selection */}
       <div>
@@ -199,7 +223,9 @@ export function AdminProductEditModal({
             );
           })}
         </div>
-        {errors.sizes && <p className="text-xs text-red-600 mt-1">{errors.sizes}</p>}
+        {errors.sizes && (
+          <p className="text-xs text-red-600 mt-1">{errors.sizes}</p>
+        )}
       </div>
 
       {/* Product Details / Description */}
@@ -219,159 +245,41 @@ export function AdminProductEditModal({
         )}
       </div>
 
-      {/* ZONE 1: OFFICIAL IMAGES */}
-      <div className="p-4 border line bg-neutral-50/60 space-y-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <span className="text-xs font-semibold tracking-wider uppercase">
-              Zone 1: Official Website Images *
-            </span>
-            <p className="mute text-[11px]">
-              Primary photos displayed on storefront catalog and product pages.
-            </p>
-          </div>
-          <span className="text-xs font-mono mute">
-            {(editForm.images || []).length} photos
-          </span>
-        </div>
+      {/* ZONE 1: OFFICIAL WEBSITE IMAGES (CLOUDINARY UPLOAD) */}
+      <ProductImageUploadZone
+        title="Zone 1: Official Website Images *"
+        description="Primary photos displayed on storefront catalog and product pages. Upload directly to Cloudinary or paste URL."
+        badgePrefix="#"
+        images={editForm.images || []}
+        isUploading={uploadingZone === "official"}
+        error={errors.images}
+        uploadError={uploadingZone === "official" ? undefined : uploadError}
+        onUploadFiles={(files) => onUploadImages(files, "official")}
+        onAddUrl={handleAddOfficialUrl}
+        onRemoveImage={handleRemoveOfficialImage}
+        onSetPrimaryImage={handleSetPrimaryOfficialImage}
+      />
 
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={newOfficialUrl}
-            onChange={(e) => setNewOfficialUrl(e.target.value)}
-            placeholder="Image path (e.g. /images/products/p1-01.jpg)"
-            className="flex-1 bg-white border line px-3 py-2 text-xs outline-none"
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                handleAddOfficialImage();
-              }
-            }}
-          />
-          <button
-            type="button"
-            onClick={handleAddOfficialImage}
-            className="px-4 py-2 bg-black text-white text-xs tracking-wider uppercase hover:opacity-85"
-          >
-            Add Image
-          </button>
-        </div>
-
-        {/* Thumbnails grid */}
-        <div className="flex flex-wrap gap-3 pt-2">
-          {(editForm.images || []).map((url, i) => (
-            <div
-              key={i}
-              className="relative w-20 h-24 border line bg-white overflow-hidden group shrink-0"
-            >
-              <img
-                src={url}
-                alt={`Official ${i + 1}`}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).src =
-                    "/images/products/p1-01.jpg";
-                }}
-              />
-              <span className="absolute top-1 left-1 bg-black/70 text-white text-[9px] px-1 font-mono">
-                #{i + 1}
-              </span>
-              <button
-                type="button"
-                onClick={() => handleRemoveOfficialImage(i)}
-                className="absolute top-1 right-1 bg-red-600 text-white w-4 h-4 rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
-                title="Remove this image"
-              >
-                ✕
-              </button>
-            </div>
-          ))}
-        </div>
-        {errors.images && (
-          <p className="text-xs text-red-600">{errors.images}</p>
-        )}
-      </div>
-
-      {/* ZONE 2: TEMPORARY / DRAFT IMAGES */}
-      <div className="p-4 border line bg-neutral-50/60 space-y-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <span className="text-xs font-semibold tracking-wider uppercase">
-              Zone 2: Temporary & Archive Images
-            </span>
-            <p className="mute text-[11px]">
-              Supplemental archive photos for detail inspection or customer inquiries.
-            </p>
-          </div>
-          <span className="text-xs font-mono mute">
-            {(editForm.temporaryImages || []).length} photos
-          </span>
-        </div>
-
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={newTempUrl}
-            onChange={(e) => setNewTempUrl(e.target.value)}
-            placeholder="Temporary image path (e.g. /images/products/p2-01.webp)"
-            className="flex-1 bg-white border line px-3 py-2 text-xs outline-none"
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                handleAddTempImage();
-              }
-            }}
-          />
-          <button
-            type="button"
-            onClick={handleAddTempImage}
-            className="px-4 py-2 border line bg-white hover:bg-neutral-100 text-xs tracking-wider uppercase"
-          >
-            Add Temp Image
-          </button>
-        </div>
-
-        {/* Thumbnails grid for temp images */}
-        <div className="flex flex-wrap gap-3 pt-2">
-          {(editForm.temporaryImages || []).map((url, i) => (
-            <div
-              key={i}
-              className="relative w-20 h-24 border line bg-white overflow-hidden group shrink-0"
-            >
-              <img
-                src={url}
-                alt={`Temp ${i + 1}`}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).src =
-                    "/images/products/p1-01.jpg";
-                }}
-              />
-              <span className="absolute top-1 left-1 bg-neutral-800/70 text-white text-[9px] px-1 font-mono">
-                T{i + 1}
-              </span>
-              <button
-                type="button"
-                onClick={() => handleRemoveTempImage(i)}
-                className="absolute top-1 right-1 bg-red-600 text-white w-4 h-4 rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
-                title="Remove this temp image"
-              >
-                ✕
-              </button>
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* ZONE 2: TEMPORARY & ARCHIVE IMAGES (CLOUDINARY UPLOAD) */}
+      <ProductImageUploadZone
+        title="Zone 2: Temporary & Archive Images"
+        description="Supplemental archive photos for detail inspection or customer share links."
+        badgePrefix="T"
+        images={editForm.temporaryImages || []}
+        isUploading={uploadingZone === "temporary"}
+        onUploadFiles={(files) => onUploadImages(files, "temporary")}
+        onAddUrl={handleAddTempUrl}
+        onRemoveImage={handleRemoveTempImage}
+      />
 
       {errors.form && <p className="text-xs text-red-600">{errors.form}</p>}
 
       <div className="flex gap-3 pt-3 border-t line">
         <button
           type="button"
-          disabled={actionLoading}
+          disabled={actionLoading || uploadingZone !== null}
           onClick={onSubmit}
-          className="btn text-xs py-2.5 px-6"
+          className="btn text-xs py-2.5 px-6 disabled:opacity-60"
         >
           {actionLoading ? "Saving Changes..." : "Save Changes"}
         </button>
@@ -386,4 +294,3 @@ export function AdminProductEditModal({
     </div>
   );
 }
-

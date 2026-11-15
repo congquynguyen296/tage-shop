@@ -9,13 +9,17 @@ import { useCartStore } from "@/service/cart/store";
 import { useProductStore } from "@/service/products/store";
 import { trackRecentlyViewedApi } from "@/service/products/queries";
 import { LoginSchema } from "@/service/auth/schema";
-import { signIn } from "@/lib/auth-client";
+import { APP_ROUTES, STOREFRONT_LOCKED } from "@/config/routes";
+import { signIn, signOut } from "@/lib/auth-client";
 import { markUserSessionSynced } from "@/hooks/useAuthSync";
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectUrl = searchParams.get("redirect") || "/";
+  const defaultRedirect = STOREFRONT_LOCKED
+    ? APP_ROUTES.ADMIN.DASHBOARD
+    : APP_ROUTES.STOREFRONT.HOME;
+  const redirectUrl = searchParams.get("redirect") || defaultRedirect;
   const reason = searchParams.get("reason");
 
   const setUser = useAuthStore((s) => s.setUser);
@@ -54,12 +58,30 @@ function LoginForm() {
       }
 
       if (res.data) {
-        const authUser = res.data.user as { id: string; name: string; email: string; role?: string };
+        const authUser = res.data.user as {
+          id: string;
+          name: string;
+          email: string;
+          role?: string;
+        };
+        const isAdminRole = authUser.role?.toLowerCase() === "admin";
+
+        // Enforce Admin privilege when storefront is locked or redirecting to /admin
+        if ((STOREFRONT_LOCKED || redirectUrl.startsWith("/admin")) && !isAdminRole) {
+          await signOut().catch(() => {});
+          setUser(null);
+          setErrors({
+            form: "Access denied: Administrator privileges are required to sign in to the Admin Console.",
+          });
+          setLoading(false);
+          return;
+        }
+
         setUser({
           id: authUser.id,
           name: authUser.name,
           email: authUser.email,
-          role: authUser.role?.toLowerCase() === "admin" ? "admin" : "user",
+          role: isAdminRole ? "admin" : "user",
           addresses: [],
         });
 
@@ -71,7 +93,7 @@ function LoginForm() {
           trackRecentlyViewedApi(undefined, guestRecentIds);
         }
 
-        router.push(redirectUrl);
+        router.push(isAdminRole && STOREFRONT_LOCKED ? APP_ROUTES.ADMIN.DASHBOARD : redirectUrl);
       }
     } catch (err) {
       setErrors({ form: err instanceof Error ? err.message : "Authentication failed" });
@@ -140,6 +162,18 @@ function LoginForm() {
         <button
           type="button"
           onClick={async () => {
+            const isAdminTarget =
+              STOREFRONT_LOCKED ||
+              redirectUrl.startsWith("/admin") ||
+              reason === "admin_required";
+
+            if (isAdminTarget) {
+              setErrors({
+                form: "Google Sign-In is disabled for Admin Console. Please sign in with your Admin email and password.",
+              });
+              return;
+            }
+
             await signIn.social({
               provider: "google",
               callbackURL: redirectUrl,
@@ -169,12 +203,17 @@ function LoginForm() {
         </button>
       </form>
 
-      <div className="mt-6 text-center text-xs mute">
-        Don’t have an account?{" "}
-        <Link href="/auth/register" className="text-[color:var(--fg)] underline">
-          Create one
-        </Link>
-      </div>
+      {!STOREFRONT_LOCKED && (
+        <div className="mt-6 text-center text-xs mute">
+          Don’t have an account?{" "}
+          <Link
+            href="/auth/register"
+            className="text-[color:var(--fg)] underline"
+          >
+            Create one
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

@@ -4,7 +4,7 @@ export type ProductCategory =
   | "Bottoms"
   | "Sweatshirt"
   | "Items"
-  // | "Collection" // Themed collections (Temporarily commented out)
+  | "Collection"
   | "Denim"
   | "Knitwear"
   | "Leather"

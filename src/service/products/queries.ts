@@ -1,4 +1,5 @@
 import { ApiResponse, PaginatedResponse, Product } from "@/types";
+import { API_ROUTES, SERVICE_CONSTANTS } from "@/config/routes";
 import { ProductFilterInput, ProductFilterSchema } from "./schema";
 
 /**
@@ -25,7 +26,7 @@ function fetchDedupedJson<T>(url: string): Promise<T> {
       const data = (await res.json()) as T;
       setTimeout(() => {
         inFlightGetRequests.delete(url);
-      }, 250);
+      }, SERVICE_CONSTANTS.DEDUPE_CACHE_TTL_MS);
       return data;
     })
     .catch((err) => {
@@ -147,7 +148,7 @@ export async function fetchProductsApi(
   sp.set("pageSize", String(params.pageSize));
 
   return fetchDedupedJson<ApiResponse<PaginatedResponse<Product>>>(
-    `/api/products?${sp.toString()}`
+    API_ROUTES.PRODUCTS.withQuery(sp.toString())
   );
 }
 
@@ -159,7 +160,7 @@ export async function fetchProductBySlugApi(
 ): Promise<ApiResponse<Product | null>> {
   try {
     return await fetchDedupedJson<ApiResponse<Product | null>>(
-      `/api/products/${encodeURIComponent(slugOrId)}`
+      API_ROUTES.PRODUCTS.bySlug(slugOrId)
     );
   } catch {
     return {
@@ -178,7 +179,7 @@ export async function fetchSharedProductApi(
 ): Promise<ApiResponse<Product | null>> {
   try {
     return await fetchDedupedJson<ApiResponse<Product | null>>(
-      `/api/share/${encodeURIComponent(code)}`
+      API_ROUTES.SHARE.byCode(code)
     );
   } catch {
     return {
@@ -197,7 +198,7 @@ export async function fetchRelatedProductsApi(
 ): Promise<ApiResponse<Product[]>> {
   try {
     return await fetchDedupedJson<ApiResponse<Product[]>>(
-      `/api/products/${encodeURIComponent(slugOrId)}/related`
+      API_ROUTES.PRODUCTS.relatedBySlug(slugOrId)
     );
   } catch {
     return {
@@ -227,7 +228,7 @@ export async function fetchRecentlyViewedApi(options: {
 
   try {
     return await fetchDedupedJson<ApiResponse<Product[]>>(
-      `/api/recently-viewed?${sp.toString()}`
+      API_ROUTES.RECENTLY_VIEWED.withQuery(sp.toString())
     );
   } catch {
     return {
@@ -258,7 +259,7 @@ export async function trackRecentlyViewedApi(
     return existing;
   }
 
-  const promise = fetch("/api/recently-viewed", {
+  const promise = fetch(API_ROUTES.RECENTLY_VIEWED.BASE, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: key,
@@ -270,7 +271,7 @@ export async function trackRecentlyViewedApi(
     .finally(() => {
       setTimeout(() => {
         inFlightRecentlyViewedPost.delete(key);
-      }, 250);
+      }, SERVICE_CONSTANTS.DEDUPE_CACHE_TTL_MS);
     });
 
   inFlightRecentlyViewedPost.set(key, promise);
@@ -295,7 +296,7 @@ export async function searchProductsApi(
   try {
     const json = await fetchDedupedJson<
       ApiResponse<PaginatedResponse<Product>>
-    >(`/api/products?q=${encodeURIComponent(q)}&pageSize=12`);
+    >(API_ROUTES.PRODUCTS.search(q, SERVICE_CONSTANTS.SEARCH_DEFAULT_PAGE_SIZE));
     return {
       success: json.success,
       data: json.data?.items || [],

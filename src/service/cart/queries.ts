@@ -1,4 +1,5 @@
 import { ApiResponse, CartItem } from "@/types";
+import { API_ROUTES } from "@/config/routes";
 
 const inFlightCartGet = new Map<string, Promise<ApiResponse<CartItem[]>>>();
 
@@ -12,7 +13,7 @@ export async function fetchCartApi(
   if (guestIds && guestIds.length > 0) {
     sp.set("ids", guestIds.map(String).join(","));
   }
-  const url = sp.toString() ? `/api/cart?${sp.toString()}` : "/api/cart";
+  const url = API_ROUTES.CART.withQuery(sp.toString());
 
   const existing = inFlightCartGet.get(url);
   if (existing) {

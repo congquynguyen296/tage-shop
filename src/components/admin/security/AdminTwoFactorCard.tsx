@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { authClient } from "@/lib/auth-client";
+import { toast } from "@/service/ui/store";
 import { Field } from "@/components/ui/Field";
 
 type SetupStep = "idle" | "password" | "verify" | "disable_confirm" | "regen_codes";
@@ -139,6 +140,7 @@ export function AdminTwoFactorCard() {
       }
 
       setSuccessMsg("Two-Factor Authentication (TOTP) has been successfully activated and enforced!");
+      toast.success("Two-Factor Authentication activated");
       setSetupStep("idle");
       setPassword("");
       setVerifyCode("");
@@ -170,6 +172,7 @@ export function AdminTwoFactorCard() {
       }
 
       setSuccessMsg("Two-Factor Authentication has been successfully disabled.");
+      toast.info("Two-Factor Authentication disabled");
       setSetupStep("idle");
       setPassword("");
       await refreshStatus();
@@ -202,6 +205,7 @@ export function AdminTwoFactorCard() {
       if (res.data && res.data.backupCodes) {
         setBackupCodes(res.data.backupCodes);
         setSuccessMsg("New emergency backup codes generated. Old codes are now invalidated.");
+        toast.success("New backup codes generated");
         setPassword("");
       }
     } catch (err) {
@@ -217,6 +221,7 @@ export function AdminTwoFactorCard() {
     try {
       await navigator.clipboard.writeText(totpSecret);
       setCopiedKey(true);
+      toast.success("TOTP secret key copied");
       setTimeout(() => setCopiedKey(false), 2000);
     } catch {
       // Fallback
@@ -229,6 +234,7 @@ export function AdminTwoFactorCard() {
     try {
       await navigator.clipboard.writeText(backupCodes.join("\n"));
       setCopiedCodes(true);
+      toast.success("Backup codes copied to clipboard");
       setTimeout(() => setCopiedCodes(false), 2000);
     } catch {
       // Fallback
@@ -238,7 +244,7 @@ export function AdminTwoFactorCard() {
   // Download backup codes as .txt file
   const handleDownloadBackupCodes = () => {
     if (backupCodes.length === 0) return;
-    const content = `==========================================================\nTAGE STUDIO - EMERGENCY RECOVERY BACKUP CODES\n==========================================================\nAdministrator: ${session?.user?.email || "admin@tage.studio"}\nGenerated: ${new Date().toLocaleString()}\n\nKeep these 10 one-time recovery codes in a secure password vault.\nEach code can only be used once if you lose access to your\nmobile authenticator application.\n\n${backupCodes.map((code, idx) => `[${idx + 1}] ${code}`).join("\n")}\n\n==========================================================\n`;
+    const content = `==========================================================\nTAGE STUDIO - EMERGENCY RECOVERY BACKUP CODES\n==========================================================\nAdministrator: ${session?.user?.email || "Admin"}\nGenerated: ${new Date().toLocaleString()}\n\nKeep these 10 one-time recovery codes in a secure password vault.\nEach code can only be used once if you lose access to your\nmobile authenticator application.\n\n${backupCodes.map((code, idx) => `[${idx + 1}] ${code}`).join("\n")}\n\n==========================================================\n`;
 
     const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);

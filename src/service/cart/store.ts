@@ -3,6 +3,8 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { CartItem, Product } from "@/types";
+import { SERVICE_CONSTANTS, SERVICE_STORAGE_KEYS } from "@/config/routes";
+import { toast } from "@/service/ui/store";
 import { AddToCartSchema } from "./schema";
 import { fetchCartApi } from "./queries";
 import {
@@ -43,6 +45,7 @@ export const useCartStore = create<CartState>()(
       flashToast: (msg: string) => {
         if (toastTimer) clearTimeout(toastTimer);
         set({ toastMessage: msg });
+        toast.info(msg);
         toastTimer = setTimeout(() => {
           set({ toastMessage: "" });
         }, 2200);
@@ -151,9 +154,14 @@ export const useCartStore = create<CartState>()(
 
       applyCoupon: (code) => {
         const clean = code.trim().toUpperCase();
-        if (clean === "TAGE10") {
-          set({ couponCode: "TAGE10", discountRate: 0.1 });
-          get().flashToast("Promo code TAGE10 (10% off) applied");
+        if (clean === SERVICE_CONSTANTS.DEFAULT_PROMO_CODE) {
+          set({
+            couponCode: SERVICE_CONSTANTS.DEFAULT_PROMO_CODE,
+            discountRate: SERVICE_CONSTANTS.DEFAULT_PROMO_DISCOUNT_RATE,
+          });
+          get().flashToast(
+            `Promo code ${SERVICE_CONSTANTS.DEFAULT_PROMO_CODE} (10% off) applied`
+          );
           return { ok: true, message: "10% discount applied" };
         }
         return { ok: false, message: "Invalid or expired promo code" };
@@ -204,7 +212,7 @@ export const useCartStore = create<CartState>()(
       },
     }),
     {
-      name: "tage-cart-storage",
+      name: SERVICE_STORAGE_KEYS.CART,
       partialize: (state) => ({
         items: state.items,
         couponCode: state.couponCode,

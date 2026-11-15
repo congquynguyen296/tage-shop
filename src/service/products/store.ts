@@ -3,7 +3,8 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { Product } from "@/types";
-import { slugify } from "@/config/utils";
+import { DEFAULT_PRODUCT_IMAGE, slugify } from "@/config/utils";
+import { SERVICE_CONSTANTS, SERVICE_STORAGE_KEYS } from "@/config/routes";
 import { UpsertProductInput } from "./schema";
 
 export interface ShopCatalogPageEntry {
@@ -228,7 +229,12 @@ export const useProductStore = create<ProductStoreState>()(
           const filtered = state.recentlyViewedIds.filter(
             (x) => String(x) !== key
           );
-          return { recentlyViewedIds: [idOrSlug, ...filtered].slice(0, 8) };
+          return {
+            recentlyViewedIds: [idOrSlug, ...filtered].slice(
+              0,
+              SERVICE_CONSTANTS.MAX_RECENTLY_VIEWED_GUEST
+            ),
+          };
         });
       },
 
@@ -251,15 +257,15 @@ export const useProductStore = create<ProductStoreState>()(
         }),
     }),
     {
-      name: "tage-products-storage",
-      version: 6,
+      name: SERVICE_STORAGE_KEYS.PRODUCTS,
+      version: 7,
       partialize: (state) => ({
         products: state.products,
         recentlyViewedIds: state.recentlyViewedIds,
         wishlistIds: state.wishlistIds,
       }),
       migrate: (persistedState: unknown, version: number) => {
-        if (version < 6) {
+        if (version < 7) {
           const state = persistedState as Partial<ProductStoreState>;
           return {
             ...state,
@@ -276,9 +282,9 @@ export const useProductStore = create<ProductStoreState>()(
                 ? p.images.map((img) =>
                     typeof img === "string"
                       ? img.replace(/^\/?asset\/images\//, "/images/")
-                      : "/images/products/p1-01.jpg"
+                      : DEFAULT_PRODUCT_IMAGE
                   )
-                : ["/images/products/p1-01.jpg"];
+                : [DEFAULT_PRODUCT_IMAGE];
             return { ...p, images: validImages };
           });
         }

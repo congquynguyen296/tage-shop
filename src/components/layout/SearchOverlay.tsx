@@ -4,7 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Icons } from "@/components/ui/Icons";
 import { SearchProductRowSkeleton } from "@/components/product/ProductSkeleton";
-import { money, getSafeProductImage } from "@/config/utils";
+import {
+  money,
+  getSafeProductImage,
+  handleProductImageError,
+} from "@/config/utils";
 import { useProductStore } from "@/service/products/store";
 import { searchProductsApi } from "@/service/products/queries";
 import { Product } from "@/types";
@@ -160,10 +164,7 @@ export function SearchOverlay({ open, onClose }: SearchOverlayProps) {
                       src={getSafeProductImage(p)}
                       alt={p.name}
                       className="w-full h-full object-cover"
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).src =
-                          "/images/products/p1-01.jpg";
-                      }}
+                      onError={handleProductImageError}
                     />
                   </div>
                   <div className="flex-1">

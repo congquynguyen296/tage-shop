@@ -1,8 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Product } from "@/types";
-import { money } from "@/config/utils";
+import {
+  DEFAULT_PRODUCT_IMAGE,
+  handleProductImageError,
+  money,
+} from "@/config/utils";
+import { APP_ROUTES } from "@/config/routes";
 import { AdminProductsTableSkeletonRows } from "@/components/product/ProductSkeleton";
 
 interface AdminProductsTableProps {
@@ -26,6 +32,7 @@ export function AdminProductsTable({
   searchQuery,
   onClearSearch,
 }: AdminProductsTableProps) {
+  const router = useRouter();
   const [openMenuId, setOpenMenuId] = useState<number | string | null>(null);
 
   useEffect(() => {
@@ -36,8 +43,8 @@ export function AdminProductsTable({
   }, [openMenuId]);
 
   return (
-    <div className="card border line bg-white overflow-visible">
-      <table className="w-full text-left text-xs border-collapse">
+    <div className="card border line bg-white overflow-x-auto">
+      <table className="w-full min-w-[680px] text-left text-xs border-collapse">
         <thead>
           <tr className="border-b line bg-neutral-50 tracking-wider uppercase text-[11px] mute">
             <th className="p-4">Item</th>
@@ -87,20 +94,18 @@ export function AdminProductsTable({
               return (
                 <tr
                   key={p.id}
-                  className={`hover:bg-neutral-50/70 transition-colors ${
+                  onClick={() => router.push(APP_ROUTES.ADMIN.productDetail(p.id))}
+                  className={`hover:bg-neutral-50/70 transition-colors cursor-pointer group ${
                     isSelected ? "bg-neutral-100/60" : ""
                   }`}
                 >
                   <td className="p-4 flex items-center gap-3">
                     <div className="relative w-12 h-14 shrink-0 card line border overflow-hidden">
                       <img
-                        src={p.images[0] || "/images/products/p1-01.jpg"}
+                        src={p.images[0] || DEFAULT_PRODUCT_IMAGE}
                         alt={p.name}
                         className="w-full h-full object-cover"
-                        onError={(e) => {
-                          (e.currentTarget as HTMLImageElement).src =
-                            "/images/products/p1-01.jpg";
-                        }}
+                        onError={handleProductImageError}
                       />
                       {p.isSoldOut && (
                         <span className="absolute inset-x-0 bottom-0 bg-black/85 text-white text-[8px] tracking-wider uppercase text-center font-bold py-0.5">
@@ -109,7 +114,9 @@ export function AdminProductsTable({
                       )}
                     </div>
                     <div>
-                      <div className="font-semibold text-sm">{p.name}</div>
+                      <div className="font-semibold text-sm group-hover:underline">
+                        {p.name}
+                      </div>
                       <div className="mute text-[10px] font-mono mt-0.5">
                         ID: {p.id} {p.comboId && `· ${p.comboId}`}
                       </div>
@@ -166,8 +173,18 @@ export function AdminProductsTable({
                     {isMenuOpen && (
                       <div
                         onClick={(e) => e.stopPropagation()}
-                        className="absolute right-4 top-11 z-30 w-32 bg-white border line shadow-md py-1 text-left"
+                        className="absolute right-4 top-11 z-30 w-36 bg-white border line shadow-md py-1 text-left"
                       >
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOpenMenuId(null);
+                            router.push(APP_ROUTES.ADMIN.productDetail(p.id));
+                          }}
+                          className="w-full px-3.5 py-2 text-left text-xs uppercase tracking-wider hover:bg-neutral-100 transition-colors block font-medium"
+                        >
+                          View Details
+                        </button>
                         <button
                           type="button"
                           onClick={() => {

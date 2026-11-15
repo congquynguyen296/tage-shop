@@ -20,6 +20,8 @@ export const AUTH_CONFIG = {
   cookiePrefix,
   cookieName: `${cookiePrefix}.session_token`,
   secureCookieName: `__Secure-${cookiePrefix}.session_token`,
+  dataCookieName: `${cookiePrefix}.session_data`,
+  secureDataCookieName: `__Secure-${cookiePrefix}.session_data`,
   tokenStorageKey: "tage-auth-storage",
   adminRole: process.env.AUTH_ADMIN_ROLE || "admin",
   customerRole: process.env.AUTH_CUSTOMER_ROLE || "user",
@@ -69,16 +71,5 @@ export const AUTH_CONFIG = {
     resendApiUrl:
       process.env.RESEND_API_URL || "https://api.resend.com/emails",
     from: process.env.EMAIL_FROM || "TAGE Studio <noreply@tage.studio>",
-  },
-
-  demoAdminCredentials: {
-    email:
-      process.env.NEXT_PUBLIC_DEMO_ADMIN_EMAIL ||
-      process.env.ADMIN_SEED_EMAIL ||
-      "admin@tage.studio",
-    password:
-      process.env.NEXT_PUBLIC_DEMO_ADMIN_PASSWORD ||
-      process.env.ADMIN_SEED_PASSWORD ||
-      "password123456",
   },
 };

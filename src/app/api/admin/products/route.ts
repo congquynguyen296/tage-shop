@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/server/auth/queries";
+import { ApiError, requireAdmin } from "@/server/auth/queries";
+import {
+  ADMIN_PRODUCT_PATCH_MODES,
+  AdminProductPatchMode,
+} from "@/config/routes";
 import {
   SaveProductShareSchema,
   UpsertProductInput,
@@ -16,6 +20,7 @@ import {
 
 export async function GET() {
   try {
+    await requireAdmin();
     const data = await findAllAdminProducts();
     return NextResponse.json({
       success: true,
@@ -23,6 +28,18 @@ export async function GET() {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
+    if (error instanceof ApiError) {
+      return NextResponse.json(
+        {
+          success: false,
+          data: [],
+          message: error.message,
+          code: error.code,
+          timestamp: new Date().toISOString(),
+        },
+        { status: error.status }
+      );
+    }
     console.error("[GET /api/admin/products] Error:", error);
     return NextResponse.json(
       {
@@ -65,9 +82,9 @@ export async function PATCH(req: NextRequest) {
   try {
     const session = await requireAdmin();
     const body = await req.json();
-    const mode = body.mode as "update" | "stock" | "share";
+    const mode = body.mode as AdminProductPatchMode;
 
-    if (mode === "share") {
+    if (mode === ADMIN_PRODUCT_PATCH_MODES.SHARE) {
       const input = SaveProductShareSchema.parse(body);
       const data = await saveAdminProductShareLinkInDb(input, session.user);
       return NextResponse.json({
@@ -77,7 +94,7 @@ export async function PATCH(req: NextRequest) {
       });
     }
 
-    if (mode === "stock") {
+    if (mode === ADMIN_PRODUCT_PATCH_MODES.STOCK) {
       const data = await updateAdminProductStockInDb(
         String(body.productId),
         Number(body.stock ?? 0),

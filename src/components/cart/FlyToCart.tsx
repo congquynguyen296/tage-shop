@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { create } from "zustand";
+import { handleProductImageError } from "@/config/utils";
 
 interface FlyingParticle {
   id: string;
@@ -116,10 +117,7 @@ function ParticleItem({
         src={particle.image}
         alt="Fly to cart"
         className="w-full h-full object-cover"
-        onError={(e) => {
-          (e.currentTarget as HTMLImageElement).src =
-            "/images/products/p1-01.jpg";
-        }}
+        onError={handleProductImageError}
       />
     </div>
   );

@@ -1,6 +1,10 @@
 "use client";
 
-import { money, getSafeProductImage } from "@/config/utils";
+import {
+  money,
+  getSafeProductImage,
+  handleProductImageError,
+} from "@/config/utils";
 import { CartItem } from "@/types";
 
 interface OrderSummaryAsideProps {
@@ -31,10 +35,7 @@ export function OrderSummaryAside({
               src={getSafeProductImage(i.product)}
               alt={i.product.name}
               className="w-full h-full object-cover"
-              onError={(e) => {
-                (e.currentTarget as HTMLImageElement).src =
-                  "/images/products/p1-01.jpg";
-              }}
+              onError={handleProductImageError}
             />
           </div>
           <div className="flex-1">

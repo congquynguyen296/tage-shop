@@ -3,7 +3,11 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Product } from "@/types";
-import { money, getSafeProductImage } from "@/config/utils";
+import {
+  money,
+  getSafeProductImage,
+  handleProductImageError,
+} from "@/config/utils";
 import { useCartStore } from "@/service/cart/store";
 import { flyToCart } from "@/components/cart/FlyToCart";
 import { useDevice } from "@/hooks/useDevice";
@@ -176,10 +180,7 @@ export function ProductCard({ product }: ProductCardProps) {
                 alt={`${product.name} angle ${i}`}
                 loading="lazy"
                 className="absolute inset-0 w-full h-full object-cover select-none pointer-events-none"
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).src =
-                    "/images/products/p1-01.jpg";
-                }}
+                onError={handleProductImageError}
               />
             </div>
           ))}

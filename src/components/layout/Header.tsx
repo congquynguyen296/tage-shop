@@ -182,14 +182,6 @@ export function Header() {
 
       <MobileMenu open={mobileOpen} onClose={() => setMobileOpen(false)} />
       <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
-
-
-      {/* Global Toast Notification */}
-      {toastMessage && (
-        <div className="toast fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-[color:var(--accent)] text-white text-xs tracking-widest uppercase px-5 py-3 max-w-[90vw] text-center shadow-lg">
-          {toastMessage}
-        </div>
-      )}
     </>
   );
 }

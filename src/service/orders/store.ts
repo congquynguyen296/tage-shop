@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { Order, OrderStatus } from "@/types";
+import { SERVICE_STORAGE_KEYS } from "@/config/routes";
 
 interface OrderStoreState {
   orders: Order[];
@@ -30,7 +31,7 @@ export const useOrderStore = create<OrderStoreState>()(
         })),
     }),
     {
-      name: "tage-orders-storage",
+      name: SERVICE_STORAGE_KEYS.ORDERS,
     }
   )
 );

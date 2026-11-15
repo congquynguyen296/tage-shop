@@ -6,6 +6,7 @@ export const ProductCategorySchema = z.enum([
   "Bottoms",
   "Sweatshirt",
   "Items",
+  "Collection",
   "Denim",
   "Knitwear",
   "Leather",
@@ -41,6 +42,7 @@ export const UpsertProductSchema = z.object({
   isSoldOut: z.boolean().default(false),
   comboId: z.string().optional(),
   comboTitle: z.string().optional(),
+  comboItemIds: z.array(z.string()).optional(),
   shareCode: z.string().optional(),
   sharedImages: z.array(z.string()).optional(),
   description: z.string().optional(),
@@ -52,6 +54,31 @@ export const SaveProductShareSchema = z.object({
   selectedImages: z
     .array(z.string().min(1))
     .min(1, "Please select at least 1 photo to include in the share link"),
+});
+
+export const UploadMediaZoneSchema = z
+  .enum(["official", "temporary"])
+  .default("official");
+
+export const UploadMediaInputSchema = z.object({
+  zone: UploadMediaZoneSchema,
+  productName: z.string().optional().default(""),
+  startIndex: z.number().int().min(0).optional().default(0),
+  fileCount: z
+    .number()
+    .int()
+    .min(1, "Please select at least 1 image file")
+    .max(12, "Maximum 12 images per upload"),
+});
+
+export const UploadedMediaItemSchema = z.object({
+  url: z.string().min(1),
+  publicId: z.string().min(1),
+  provider: z.enum(["cloudinary", "local"]),
+  width: z.number().optional(),
+  height: z.number().optional(),
+  format: z.string().optional(),
+  bytes: z.number().optional(),
 });
 
 export const ProductFilterSchema = z.object({
@@ -67,5 +94,7 @@ export const ProductFilterSchema = z.object({
 
 export type UpsertProductInput = z.infer<typeof UpsertProductSchema>;
 export type SaveProductShareInput = z.infer<typeof SaveProductShareSchema>;
+export type UploadMediaZone = z.infer<typeof UploadMediaZoneSchema>;
+export type UploadedMediaItem = z.infer<typeof UploadedMediaItemSchema>;
 export type ProductFilterInput = z.infer<typeof ProductFilterSchema>;
 

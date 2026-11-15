@@ -1,13 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Product } from "@/types";
-import { money } from "@/config/utils";
+import { handleProductImageError, money } from "@/config/utils";
+import { toast } from "@/service/ui/store";
 
 interface AdminProductShareModalProps {
   product: Product;
   actionLoading: boolean;
+  isUploading?: boolean;
+  onUploadTempFiles?: (files: File[]) => Promise<string[]>;
   onSaveShareLink: (
     productId: number | string,
     selectedImages: string[],
@@ -19,9 +22,12 @@ interface AdminProductShareModalProps {
 export function AdminProductShareModal({
   product,
   actionLoading,
+  isUploading = false,
+  onUploadTempFiles,
   onSaveShareLink,
   onClose,
 }: AdminProductShareModalProps) {
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const officialImages = product.images || [];
   const [tempImages, setTempImages] = useState<string[]>(
     product.temporaryImages || []
@@ -84,10 +90,29 @@ export function AdminProductShareModal({
     setNewTempUrl("");
   };
 
+  const handleUploadTempInputChange = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const fileList = e.target.files;
+    if (!fileList || fileList.length === 0 || !onUploadTempFiles) return;
+    const files = Array.from(fileList);
+    e.target.value = "";
+    const uploadedUrls = await onUploadTempFiles(files);
+    if (uploadedUrls.length > 0) {
+      setTempImages((prev) =>
+        Array.from(new Set([...prev, ...uploadedUrls]))
+      );
+      setSelectedImages((prev) =>
+        Array.from(new Set([...prev, ...uploadedUrls]))
+      );
+    }
+  };
+
   const copyToClipboard = async (text: string) => {
     if (typeof navigator !== "undefined" && navigator?.clipboard?.writeText) {
       await navigator.clipboard.writeText(text).catch(() => {});
       setCopied(true);
+      toast.success("Share link copied to clipboard");
       setTimeout(() => setCopied(false), 2500);
     }
   };
@@ -195,26 +220,38 @@ export function AdminProductShareModal({
                 key={`off-${idx}-${url}`}
                 type="button"
                 onClick={() => toggleImage(url)}
-                className={`relative aspect-[3/4] border overflow-hidden transition-all ${
+                className={`relative aspect-[3/4] border border-neutral-200/80 overflow-hidden transition-all group ${
                   isSelected
-                    ? "border-black ring-2 ring-black"
-                    : "border-neutral-200 opacity-55 hover:opacity-90"
+                    ? "opacity-100"
+                    : "opacity-55 hover:opacity-90"
                 }`}
               >
                 <img
                   src={url}
                   alt={`Web ${idx + 1}`}
                   className="w-full h-full object-cover"
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).src =
-                      "/images/products/p1-01.jpg";
-                  }}
+                  onError={handleProductImageError}
                 />
-                {isSelected && (
-                  <span className="absolute top-1 right-1 w-5 h-5 bg-black text-white text-[10px] font-mono font-bold flex items-center justify-center">
-                    {orderIndex + 1}
-                  </span>
-                )}
+                <span
+                  className={`absolute top-1.5 right-1.5 w-5 h-5 rounded-full flex items-center justify-center transition-all shadow-sm ${
+                    isSelected
+                      ? "bg-black text-white"
+                      : "bg-white/80 text-transparent border border-neutral-300 group-hover:border-neutral-500"
+                  }`}
+                >
+                  <svg
+                    width="11"
+                    height="11"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </span>
               </button>
             );
           })}
@@ -237,53 +274,87 @@ export function AdminProductShareModal({
                   key={`tmp-${idx}-${url}`}
                   type="button"
                   onClick={() => toggleImage(url)}
-                  className={`relative aspect-[3/4] border overflow-hidden transition-all ${
+                  className={`relative aspect-[3/4] border border-neutral-200/80 overflow-hidden transition-all group ${
                     isSelected
-                      ? "border-black ring-2 ring-black"
-                      : "border-neutral-200 opacity-55 hover:opacity-90"
+                      ? "opacity-100"
+                      : "opacity-55 hover:opacity-90"
                   }`}
                 >
                   <img
                     src={url}
                     alt={`Temp ${idx + 1}`}
                     className="w-full h-full object-cover"
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).src =
-                        "/images/products/p1-01.jpg";
-                    }}
+                    onError={handleProductImageError}
                   />
-                  {isSelected && (
-                    <span className="absolute top-1 right-1 w-5 h-5 bg-black text-white text-[10px] font-mono font-bold flex items-center justify-center">
-                      {orderIndex + 1}
-                    </span>
-                  )}
+                  <span
+                    className={`absolute top-1.5 right-1.5 w-5 h-5 rounded-full flex items-center justify-center transition-all shadow-sm ${
+                      isSelected
+                        ? "bg-black text-white"
+                        : "bg-white/80 text-transparent border border-neutral-300 group-hover:border-neutral-500"
+                    }`}
+                  >
+                    <svg
+                      width="11"
+                      height="11"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  </span>
                 </button>
               );
             })}
           </div>
         )}
 
-        <div className="flex gap-2 max-w-md">
-          <input
-            type="text"
-            value={newTempUrl}
-            onChange={(e) => setNewTempUrl(e.target.value)}
-            placeholder="Add temp image URL..."
-            className="flex-1 bg-neutral-50 border line px-3 py-1.5 text-xs outline-none focus:border-black"
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                handleAddQuickTempImage();
-              }
-            }}
-          />
-          <button
-            type="button"
-            onClick={handleAddQuickTempImage}
-            className="px-3 py-1.5 border line bg-white hover:border-black text-[11px] uppercase tracking-wider"
-          >
-            + Add
-          </button>
+        <div className="flex flex-wrap gap-2 max-w-xl">
+          {onUploadTempFiles && (
+            <>
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept="image/jpeg,image/png,image/webp,image/avif,image/gif"
+                onChange={handleUploadTempInputChange}
+                className="hidden"
+              />
+              <button
+                type="button"
+                disabled={isUploading}
+                onClick={() => fileInputRef.current?.click()}
+                className="px-3 py-1.5 bg-black text-white text-[11px] uppercase tracking-wider hover:opacity-85 disabled:opacity-50"
+              >
+                {isUploading ? "Uploading..." : "+ Upload Temp Photos"}
+              </button>
+            </>
+          )}
+          <div className="flex items-center gap-2 flex-1 min-w-0 w-full sm:w-auto">
+            <input
+              type="text"
+              value={newTempUrl}
+              onChange={(e) => setNewTempUrl(e.target.value)}
+              placeholder="Or paste temp image URL..."
+              className="flex-1 min-w-0 bg-neutral-50 border line px-3 py-1.5 text-xs outline-none focus:border-black"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleAddQuickTempImage();
+                }
+              }}
+            />
+            <button
+              type="button"
+              onClick={handleAddQuickTempImage}
+              className="px-3 py-1.5 border line bg-white hover:border-black text-[11px] uppercase tracking-wider shrink-0"
+            >
+              + Add URL
+            </button>
+          </div>
         </div>
       </div>
 

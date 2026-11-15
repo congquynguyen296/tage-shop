@@ -20,7 +20,9 @@ import {
   updateAdminStockAction,
   saveProductShareLinkAction,
   deleteAdminProductAction,
+  uploadProductImagesAction,
 } from "../src/service/products/actions";
+import { extractImageStorageKey } from "../src/server/products/upload";
 import { fetchCartApi } from "../src/service/cart/queries";
 import {
   addToCartApi,
@@ -426,6 +428,57 @@ describe("2. Service API Deduplication & Request Payload Verification", () => {
             c.method === "DELETE"
         ),
         true
+      );
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("validates and sends multipart/form-data to POST /api/upload for Cloudinary product images", async () => {
+    const recordedCalls: Array<{ url: string; method: string; body?: BodyInit | null }> = [];
+    const originalFetch = globalThis.fetch;
+
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      recordedCalls.push({
+        url: String(input),
+        method: init?.method || "GET",
+        body: init?.body,
+      });
+      return new Response(
+        JSON.stringify({
+          success: true,
+          url: "https://res.cloudinary.com/tage-cloud/image/upload/v1731640000/tage/products/official/jacket-01.webp",
+          data: [
+            {
+              url: "https://res.cloudinary.com/tage-cloud/image/upload/v1731640000/tage/products/official/jacket-01.webp",
+              publicId: "tage/products/official/jacket-01",
+              provider: "cloudinary",
+              width: 1200,
+              height: 1600,
+              format: "webp",
+              bytes: 142000,
+            },
+          ],
+          timestamp: new Date().toISOString(),
+        }),
+        { status: 200 }
+      );
+    }) as typeof fetch;
+
+    try {
+      const dummyFile = new File(["dummy-image-bytes"], "jacket-01.webp", {
+        type: "image/webp",
+      });
+      const result = await uploadProductImagesAction([dummyFile], "official");
+
+      assert.equal(recordedCalls.length, 1);
+      assert.equal(recordedCalls[0].url, "/api/upload");
+      assert.equal(recordedCalls[0].method, "POST");
+      assert.equal(result.length, 1);
+      assert.equal(result[0].provider, "cloudinary");
+      assert.equal(
+        extractImageStorageKey(result[0].url, "local-sku", 0),
+        "tage/products/official/jacket-01"
       );
     } finally {
       globalThis.fetch = originalFetch;

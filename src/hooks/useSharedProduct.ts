@@ -3,11 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Product } from "@/types";
 import { useProductStore } from "@/service/products/store";
+import { toast } from "@/service/ui/store";
 import {
   fetchSharedProductApi,
   findProductSync,
 } from "@/service/products/queries";
 import {
+  DEFAULT_PRODUCT_IMAGE,
   INSTAGRAM_DM_URL,
   generateInstagramProductShareMessage,
 } from "@/config/utils";
@@ -72,7 +74,7 @@ export function useSharedProduct(code: string) {
   }, [code, upsertProductDetail]);
 
   const curatedImages = useMemo(() => {
-    if (!product) return ["/images/products/p1-01.jpg"];
+    if (!product) return [DEFAULT_PRODUCT_IMAGE];
     if (product.sharedImages && product.sharedImages.length > 0) {
       return product.sharedImages;
     }
@@ -80,7 +82,7 @@ export function useSharedProduct(code: string) {
       ...(product.images || []),
       ...(product.temporaryImages || []),
     ];
-    return combined.length > 0 ? combined : ["/images/products/p1-01.jpg"];
+    return combined.length > 0 ? combined : [DEFAULT_PRODUCT_IMAGE];
   }, [product]);
 
   const displayProduct = useMemo<Product | null>(() => {
@@ -114,6 +116,7 @@ export function useSharedProduct(code: string) {
     if (typeof navigator !== "undefined" && navigator?.clipboard?.writeText) {
       await navigator.clipboard.writeText(message).catch(() => {});
       setCopied(true);
+      toast.success("Order message copied to clipboard");
     }
 
     window.open(INSTAGRAM_DM_URL, "_blank", "noopener,noreferrer");
@@ -124,6 +127,7 @@ export function useSharedProduct(code: string) {
     if (typeof navigator !== "undefined" && navigator?.clipboard?.writeText) {
       await navigator.clipboard.writeText(generatedMsg).catch(() => {});
       setCopied(true);
+      toast.success("Order message copied to clipboard");
     }
   };
 

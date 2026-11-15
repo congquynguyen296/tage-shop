@@ -1,5 +1,6 @@
 import "server-only";
 import { ComboPiece, Product, ProductCategory } from "@/types";
+import { DEFAULT_PRODUCT_IMAGE } from "@/config/utils";
 
 export interface PrismaItemImageRecord {
   id: string;
@@ -58,7 +59,7 @@ export function mapPrismaItemToProduct(
     .map((img) => img.url);
 
   const images =
-    officialImages.length > 0 ? officialImages : ["/images/products/p1-01.jpg"];
+    officialImages.length > 0 ? officialImages : [DEFAULT_PRODUCT_IMAGE];
 
   const sizeGroup = item.sizeLabel
     ? item.sizeLabel.split(",").map((s) => s.trim()).filter(Boolean)

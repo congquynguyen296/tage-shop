@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ComboPiece, Product } from "@/types";
-import { money } from "@/config/utils";
+import { handleProductImageError, money } from "@/config/utils";
 import { useCartStore } from "@/service/cart/store";
 import { flyToCart } from "@/components/cart/FlyToCart";
 
@@ -102,6 +102,7 @@ export function ProductComboLook({
                     src={piece.image}
                     alt={piece.name}
                     className="w-full h-full object-cover"
+                    onError={handleProductImageError}
                   />
                 </Link>
                 <div className="min-w-0">

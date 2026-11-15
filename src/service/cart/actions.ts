@@ -1,4 +1,5 @@
 import { ApiResponse, CartItem } from "@/types";
+import { API_ROUTES } from "@/config/routes";
 
 let inFlightSyncPromise: Promise<ApiResponse<CartItem[]>> | null = null;
 const inFlightAddByKey = new Map<string, Promise<ApiResponse<CartItem>>>();
@@ -15,7 +16,7 @@ export async function addToCartApi(
     return existing;
   }
 
-  const promise = fetch("/api/cart", {
+  const promise = fetch(API_ROUTES.CART.BASE, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ itemId: key }),
@@ -35,7 +36,7 @@ export async function addToCartApi(
 export async function removeFromCartApi(
   itemIdOrSlug: string | number
 ): Promise<void> {
-  await fetch(`/api/cart?itemId=${encodeURIComponent(String(itemIdOrSlug))}`, {
+  await fetch(API_ROUTES.CART.removeItem(itemIdOrSlug), {
     method: "DELETE",
   });
 }
@@ -44,7 +45,7 @@ export async function removeFromCartApi(
  * Clear all items in `DELETE /api/cart`
  */
 export async function clearCartApi(): Promise<void> {
-  await fetch("/api/cart?clearAll=true", {
+  await fetch(API_ROUTES.CART.CLEAR_ALL, {
     method: "DELETE",
   });
 }
@@ -64,7 +65,7 @@ export async function syncCartWithBackend(
     (i) => i.product.slug || String(i.product.id)
   );
 
-  inFlightSyncPromise = fetch("/api/cart", {
+  inFlightSyncPromise = fetch(API_ROUTES.CART.BASE, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ syncItemIds }),

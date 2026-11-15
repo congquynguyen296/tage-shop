@@ -29,7 +29,42 @@ export function delay(ms: number = 2000): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export const DEFAULT_PRODUCT_IMAGE = "/images/products/p1-01.jpg";
+export const DEFAULT_PRODUCT_IMAGE =
+  "data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22600%22%20height%3D%22800%22%20viewBox%3D%220%200%20600%20800%22%3E%3Crect%20width%3D%22600%22%20height%3D%22800%22%20fill%3D%22%23ebebeb%22%2F%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2248%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20fill%3D%22%23888888%22%20font-family%3D%22serif%22%20font-size%3D%2224%22%20letter-spacing%3D%226%22%3ETAGE%3C%2Ftext%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2253%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20fill%3D%22%23999999%22%20font-family%3D%22monospace%22%20font-size%3D%2211%22%20letter-spacing%3D%222%22%3ENO%20IMAGE%3C%2Ftext%3E%3C%2Fsvg%3E";
+
+let imageErrorNotifier: ((msg: string) => void) | null = null;
+let lastImageErrorToastAt = 0;
+
+export function registerImageErrorNotifier(fn: (msg: string) => void): void {
+  imageErrorNotifier = fn;
+}
+
+/**
+ * Safely handles broken/404 product images without ever causing an infinite request loop,
+ * and triggers a throttled toast notification.
+ */
+export function handleProductImageError(e: {
+  currentTarget: HTMLImageElement;
+}): void {
+  const img = e.currentTarget;
+  if (!img) return;
+
+  // Prevent infinite onError loop
+  img.onerror = null;
+  if (img.dataset.fallbackApplied === "true") {
+    return;
+  }
+  const failedSrc = img.getAttribute("src") || "";
+  img.dataset.fallbackApplied = "true";
+  img.src = DEFAULT_PRODUCT_IMAGE;
+
+  const now = Date.now();
+  if (imageErrorNotifier && now - lastImageErrorToastAt > 2500) {
+    lastImageErrorToastAt = now;
+    const shortName = failedSrc.split("/").pop() || "image";
+    imageErrorNotifier(`Image not found: ${shortName}`);
+  }
+}
 
 export const INSTAGRAM_SHOP_URL =
   process.env.NEXT_PUBLIC_INSTAGRAM_URL ||
@@ -140,9 +175,19 @@ export function getSafeProductImage(
 ): string {
   if (!product) return DEFAULT_PRODUCT_IMAGE;
   const raw = product.images?.[index] || product.images?.[0];
-  if (typeof raw === "string" && raw.trim().length > 0) {
-    const cleaned = raw.replace(/^\/?asset\/images\//, "/images/");
-    if (cleaned.startsWith("/images/")) {
+  if (
+    typeof raw === "string" &&
+    raw.trim().length > 0 &&
+    raw.trim() !== "/images/products/p1-01.jpg"
+  ) {
+    const cleaned = raw.trim().replace(/^\/?asset\/images\//, "/images/");
+    if (
+      cleaned.startsWith("/images/") ||
+      cleaned.startsWith("https://") ||
+      cleaned.startsWith("http://") ||
+      cleaned.startsWith("data:image/") ||
+      cleaned.startsWith("blob:")
+    ) {
       return cleaned;
     }
   }

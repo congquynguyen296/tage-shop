@@ -8,6 +8,7 @@ import { AdminProductShareModal } from "@/components/admin/products/AdminProduct
 import { AdminProductsTable } from "@/components/admin/products/AdminProductsTable";
 import { AdminProductSearchBar } from "@/components/admin/products/AdminProductSearchBar";
 import { Pagination } from "@/components/ui/Pagination";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 
 export default function AdminProductsPage() {
   const {
@@ -43,25 +44,30 @@ export default function AdminProductsPage() {
     handleUpdateProduct,
     actionLoading,
     isLoadingCatalog,
-    statusMessage,
     newProd,
     errors,
+    uploadingZone,
+    uploadError,
     updateNewProdField,
+    handleUploadNewProductImages,
+    handleUploadEditProductImages,
+    handleUploadShareTempImages,
     handleCreateProduct,
     handleDeleteProduct,
+    deletingProductTarget,
+    cancelDeleteProduct,
+    confirmDeleteProduct,
   } = useAdminProducts();
 
   return (
     <div className="space-y-8">
-      {/* Header and Status Alert */}
+      {/* Header */}
       <AdminProductHeader
         onOpenCreate={() => {
           closeEditProduct();
           closeShareProduct();
           setIsCreating(true);
         }}
-        statusMessage={statusMessage}
-        actionLoading={actionLoading}
       />
 
       {/* Modal for Curated Client Share Link */}
@@ -69,6 +75,8 @@ export default function AdminProductsPage() {
         <AdminProductShareModal
           product={sharingProduct}
           actionLoading={actionLoading}
+          isUploading={uploadingZone === "temporary"}
+          onUploadTempFiles={handleUploadShareTempImages}
           onSaveShareLink={handleSaveShareLink}
           onClose={closeShareProduct}
         />
@@ -80,7 +88,10 @@ export default function AdminProductsPage() {
           newProd={newProd}
           errors={errors}
           actionLoading={actionLoading}
+          uploadingZone={uploadingZone}
+          uploadError={uploadError}
           onUpdateField={updateNewProdField}
+          onUploadImages={handleUploadNewProductImages}
           onSubmit={handleCreateProduct}
           onClose={() => setIsCreating(false)}
         />
@@ -93,7 +104,10 @@ export default function AdminProductsPage() {
           editForm={editProd}
           errors={editErrors}
           actionLoading={actionLoading}
+          uploadingZone={uploadingZone}
+          uploadError={uploadError}
           onUpdateField={updateEditProdField}
+          onUploadImages={handleUploadEditProductImages}
           onSubmit={handleUpdateProduct}
           onClose={closeEditProduct}
         />
@@ -142,6 +156,23 @@ export default function AdminProductsPage() {
           className="mt-6 pt-4"
         />
       )}
+
+      {/* Delete Confirmation Modal Popup */}
+      <ConfirmModal
+        isOpen={Boolean(deletingProductTarget)}
+        title="Delete Product"
+        message={
+          deletingProductTarget
+            ? `Are you sure you want to permanently delete "${deletingProductTarget.name}"? This action cannot be undone.`
+            : ""
+        }
+        confirmLabel="Delete Permanently"
+        cancelLabel="Cancel"
+        isDanger
+        isLoading={actionLoading}
+        onConfirm={confirmDeleteProduct}
+        onCancel={cancelDeleteProduct}
+      />
     </div>
   );
 }

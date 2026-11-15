@@ -1,60 +1,65 @@
-import { money } from "@/config/utils";
-
 interface AdminMetricCardsProps {
-  totalRevenue: number;
-  totalOrders: number;
   catalogCount: number;
+  availableCount?: number;
+  soldOutCount?: number;
   lowStockCount: number;
 }
 
 export function AdminMetricCards({
-  totalRevenue,
-  totalOrders,
   catalogCount,
+  availableCount = 0,
+  soldOutCount = 0,
   lowStockCount,
 }: AdminMetricCardsProps) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-      <div className="card p-6 border line bg-white">
-        <div className="text-[11px] tracking-widest uppercase mute mb-2">
-          Total Revenue
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
+      <div className="card p-4 sm:p-6 border line bg-white">
+        <div className="text-[10px] sm:text-[11px] tracking-widest uppercase mute mb-1.5 sm:mb-2">
+          Total Catalog
         </div>
-        <div className="serif text-3xl">{money(totalRevenue)}</div>
-        <div className="text-xs text-emerald-600 mt-2">
-          From {totalOrders} orders
+        <div className="serif text-2xl sm:text-3xl">{catalogCount}</div>
+        <div className="text-[11px] sm:text-xs mute mt-1.5 sm:mt-2">
+          1-of-1 Pieces in DB
         </div>
       </div>
 
-      <div className="card p-6 border line bg-white">
-        <div className="text-[11px] tracking-widest uppercase mute mb-2">
-          Total Orders
+      <div className="card p-4 sm:p-6 border line bg-white">
+        <div className="text-[10px] sm:text-[11px] tracking-widest uppercase mute mb-1.5 sm:mb-2">
+          Available
         </div>
-        <div className="serif text-3xl">{totalOrders}</div>
-        <div className="text-xs mute mt-2">Instagram Orders synced</div>
+        <div className="serif text-2xl sm:text-3xl text-emerald-700">
+          {availableCount}
+        </div>
+        <div className="text-[11px] sm:text-xs text-emerald-600 mt-1.5 sm:mt-2">
+          Ready to share / sell
+        </div>
       </div>
 
-      <div className="card p-6 border line bg-white">
-        <div className="text-[11px] tracking-widest uppercase mute mb-2">
-          Active Catalog
+      <div className="card p-4 sm:p-6 border line bg-white">
+        <div className="text-[10px] sm:text-[11px] tracking-widest uppercase mute mb-1.5 sm:mb-2">
+          Sold Out
         </div>
-        <div className="serif text-3xl">{catalogCount}</div>
-        <div className="text-xs mute mt-2">Products in FW26</div>
+        <div className="serif text-2xl sm:text-3xl">{soldOutCount}</div>
+        <div className="text-[11px] sm:text-xs mute mt-1.5 sm:mt-2">
+          Archived pieces
+        </div>
       </div>
 
-      <div className="card p-6 border line bg-white">
-        <div className="text-[11px] tracking-widest uppercase mute mb-2">
-          Low Stock Alerts
+      <div className="card p-4 sm:p-6 border line bg-white">
+        <div className="text-[10px] sm:text-[11px] tracking-widest uppercase mute mb-1.5 sm:mb-2">
+          Stock Alerts
         </div>
         <div
-          className={`serif text-3xl ${
+          className={`serif text-2xl sm:text-3xl ${
             lowStockCount ? "text-amber-600" : ""
           }`}
         >
           {lowStockCount}
         </div>
-        <div className="text-xs mute mt-2">Variants with stock ≤ 3</div>
+        <div className="text-[11px] sm:text-xs mute mt-1.5 sm:mt-2">
+          Variants with stock ≤ 3
+        </div>
       </div>
     </div>
   );
 }
-

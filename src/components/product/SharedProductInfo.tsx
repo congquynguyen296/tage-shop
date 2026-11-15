@@ -1,7 +1,13 @@
 "use client";
 
 import { Product } from "@/types";
-import { money, INSTAGRAM_SHOP_URL, INSTAGRAM_HANDLE } from "@/config/utils";
+import {
+  DEFAULT_PRODUCT_IMAGE,
+  handleProductImageError,
+  money,
+  INSTAGRAM_SHOP_URL,
+  INSTAGRAM_HANDLE,
+} from "@/config/utils";
 import { Accordion } from "@/components/ui/Accordion";
 
 interface SharedProductInfoProps {
@@ -81,6 +87,48 @@ export function SharedProductInfo({
           </span>
         </div>
       </div>
+
+      {/* Collection Combo Pieces Breakdown (Individual Pieces in the Outfit) */}
+      {product.comboItems && product.comboItems.length > 0 && (
+        <div className="mt-6 pt-4 border-t line space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] tracking-[0.2em] uppercase font-semibold">
+              Included Outfit Pieces ({product.comboItems.length})
+            </span>
+            <span className="text-[11px] font-mono mute">
+              Combo Price: {money(product.price)}
+            </span>
+          </div>
+          <div className="space-y-2">
+            {product.comboItems.map((piece) => (
+              <div
+                key={piece.id}
+                className="flex items-center gap-3 p-2.5 border line bg-white/60"
+              >
+                <div className="w-12 h-16 border line bg-[#ebebeb] shrink-0 overflow-hidden">
+                  <img
+                    src={piece.image || DEFAULT_PRODUCT_IMAGE}
+                    alt={piece.name}
+                    className="w-full h-full object-cover"
+                    onError={handleProductImageError}
+                  />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-[10px] uppercase tracking-wider mute">
+                    {piece.category} · Size {piece.size || "OS"}
+                  </div>
+                  <div className="text-xs font-medium truncate">
+                    {piece.name}
+                  </div>
+                  <div className="text-xs font-mono mt-0.5">
+                    {money(piece.price)}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Primary CTA: Contact & Order via Instagram */}
       <div className="mt-7 space-y-3">

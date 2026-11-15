@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Product } from "@/types";
-import { getSafeProductImage } from "@/config/utils";
+import { getSafeProductImage, handleProductImageError } from "@/config/utils";
 
 interface ProductImageZoomModalProps {
   isOpen: boolean;
@@ -113,10 +113,7 @@ export function ProductImageZoomModal({
                 : "all 0.25s ease-out",
             }}
             className="w-full h-full object-contain pointer-events-none select-none"
-            onError={(e) => {
-              (e.currentTarget as HTMLImageElement).src =
-                "/images/products/p1-01.jpg";
-            }}
+            onError={handleProductImageError}
           />
         </div>
       </div>

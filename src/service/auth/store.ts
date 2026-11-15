@@ -13,22 +13,12 @@ interface AuthState {
   logout: () => void;
 }
 
-function setRoleCookie(role: string | null) {
-  if (typeof document === "undefined") return;
-  if (!role) {
-    document.cookie = `${AUTH_CONFIG.cookieName}=; path=/; max-age=0`;
-  } else {
-    document.cookie = `${AUTH_CONFIG.cookieName}=${role}; path=/; max-age=604800; SameSite=Lax`;
-  }
-}
-
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
       user: null,
 
       setUser: (user) => {
-        setRoleCookie(user?.role || null);
         set({ user });
       },
 
@@ -54,13 +44,14 @@ export const useAuthStore = create<AuthState>()(
           return {
             user: {
               ...state.user,
-              addresses: (state.user.addresses || []).filter((a) => a.id !== id),
+              addresses: (state.user.addresses || []).filter(
+                (a) => a.id !== id
+              ),
             },
           };
         }),
 
       logout: () => {
-        setRoleCookie(null);
         set({ user: null });
       },
     }),
@@ -69,4 +60,3 @@ export const useAuthStore = create<AuthState>()(
     }
   )
 );
-

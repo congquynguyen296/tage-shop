@@ -1,7 +1,7 @@
 "use client";
 
 import { Product } from "@/types";
-import { getSafeProductImage } from "@/config/utils";
+import { getSafeProductImage, handleProductImageError } from "@/config/utils";
 
 interface ProductGalleryProps {
   product: Product;
@@ -31,21 +31,32 @@ export function ProductGallery({
               onMouseEnter={() => onSelectIndex(i)}
               style={{ aspectRatio: "3/4" }}
               aria-label={`View angle ${i + 1}`}
-              className={`w-16 md:w-full shrink-0 border card p-1 flex items-center justify-center overflow-hidden transition-all bg-[#ebebeb] ${
-                isSelected
-                  ? "border-neutral-400 bg-white opacity-100"
-                  : "border-neutral-200/80 opacity-65 hover:opacity-100 hover:border-neutral-300"
+              className={`relative w-16 md:w-full shrink-0 border border-neutral-200/80 card p-1 flex items-center justify-center overflow-hidden transition-all bg-[#ebebeb] ${
+                isSelected ? "bg-white opacity-100" : "opacity-65 hover:opacity-100"
               }`}
             >
               <img
                 src={safeThumb}
                 alt={`${product.name} angle ${i + 1}`}
                 className="w-full h-full object-contain object-center"
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).src =
-                    "/images/products/p1-01.jpg";
-                }}
+                onError={handleProductImageError}
               />
+              {isSelected && (
+                <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-black text-white flex items-center justify-center shadow-sm pointer-events-none">
+                  <svg
+                    width="9"
+                    height="9"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </span>
+              )}
             </button>
           );
         })}
@@ -71,10 +82,7 @@ export function ProductGallery({
           src={getSafeProductImage(product, activeIndex)}
           alt={product.name}
           className="w-full h-full object-contain object-center page"
-          onError={(e) => {
-            (e.currentTarget as HTMLImageElement).src =
-              "/images/products/p1-01.jpg";
-          }}
+          onError={handleProductImageError}
         />
 
         {/* Hover visual badge */}

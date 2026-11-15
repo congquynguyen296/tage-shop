@@ -2,10 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useProductStore } from "@/service/products/store";
+import { toast } from "@/service/ui/store";
 import { Product, ProductCategory } from "@/types";
 import {
   UpsertProductInput,
   UpsertProductSchema,
+  UploadMediaZone,
 } from "@/service/products/schema";
 import {
   getAdminProductsAction,
@@ -14,7 +16,14 @@ import {
   updateAdminStockAction,
   deleteAdminProductAction,
   saveProductShareLinkAction,
+  uploadProductImagesAction,
 } from "@/service/products/actions";
+import {
+  areStringArraysEqual,
+  hasProductFormChanged,
+  mapProductToEditForm,
+} from "./useAdminProductDetail";
+import { DEFAULT_PRODUCT_IMAGE } from "@/config/utils";
 
 export const ADMIN_PRODUCTS_PAGE_SIZE = 10;
 
@@ -24,7 +33,7 @@ export const PRODUCT_CATEGORIES: ProductCategory[] = [
   "Bottoms",
   "Sweatshirt",
   "Items",
-  // "Collection", // Themed collections (Temporarily commented out)
+  "Collection",
 ];
 
 export const ADMIN_LETTER_SIZES = ["XS", "S", "M", "L", "XL", "OS"];
@@ -39,11 +48,12 @@ const INITIAL_PRODUCT_FORM: UpsertProductInput = {
   costPrice: undefined,
   category: "Outerwear",
   sizes: ["M"],
-  images: ["/images/products/p1-01.jpg"],
+  images: [],
   temporaryImages: [],
   isNew: true,
   isSale: false,
   isSoldOut: false,
+  comboItemIds: [],
   description: "",
 };
 
@@ -60,6 +70,10 @@ export function useAdminProducts() {
   const [isCreating, setIsCreating] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [sharingProduct, setSharingProduct] = useState<Product | null>(null);
+  const [deletingProductTarget, setDeletingProductTarget] = useState<{
+    id: number | string;
+    name: string;
+  } | null>(null);
   const [selectedProductId, setSelectedProductId] = useState<number | string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [isLoadingCatalog, setIsLoadingCatalog] = useState(
@@ -71,6 +85,10 @@ export function useAdminProducts() {
   const [editProd, setEditProd] = useState<UpsertProductInput>(INITIAL_PRODUCT_FORM);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [editErrors, setEditErrors] = useState<Record<string, string>>({});
+  const [uploadingZone, setUploadingZone] = useState<UploadMediaZone | null>(
+    null
+  );
+  const [uploadError, setUploadError] = useState("");
 
   // Client-side filter & pagination state
   const [categoryFilter, setCategoryFilter] = useState<string>("All");
@@ -154,17 +172,15 @@ export function useAdminProducts() {
     return filteredProducts.slice(start, start + ADMIN_PRODUCTS_PAGE_SIZE);
   }, [filteredProducts, currentPage]);
 
-  // Sync products from Neon DB on mount if not already loaded by AdminLayout
+  // Sync products from Neon DB on mount
   useEffect(() => {
-    if (useProductStore.getState().products.length > 0) {
-      setIsLoadingCatalog(false);
-      return;
-    }
     let mounted = true;
-    setIsLoadingCatalog(true);
+    if (useProductStore.getState().products.length === 0) {
+      setIsLoadingCatalog(true);
+    }
     getAdminProductsAction()
       .then((items) => {
-        if (mounted && items.length > 0) {
+        if (mounted && Array.isArray(items)) {
           setProducts(items);
         }
       })
@@ -212,6 +228,166 @@ export function useAdminProducts() {
   const resetForm = () => {
     setNewProd(INITIAL_PRODUCT_FORM);
     setErrors({});
+    setUploadError("");
+  };
+
+  const handleUploadNewProductImages = async (
+    files: File[],
+    zone: UploadMediaZone
+  ) => {
+    if (!files || files.length === 0) return;
+    if (!newProd.name.trim()) {
+      setErrors((prev) => ({
+        ...prev,
+        name: "Please enter Product Name first to create the product image folder",
+      }));
+      setUploadError(
+        "Please enter Product Name above before uploading photos so they are saved in this product's folder."
+      );
+      return;
+    }
+
+    setUploadError("");
+    setUploadingZone(zone);
+    try {
+      const currentOfficial = newProd.images || [];
+      const isOnlyDefaultPlaceholder =
+        currentOfficial.length === 1 &&
+        currentOfficial[0] === DEFAULT_PRODUCT_IMAGE;
+      const existingCount =
+        zone === "official"
+          ? isOnlyDefaultPlaceholder
+            ? 0
+            : currentOfficial.length
+          : (newProd.temporaryImages || []).length;
+
+      const uploaded = await uploadProductImagesAction(
+        files,
+        zone,
+        newProd.name.trim(),
+        existingCount
+      );
+      const uploadedUrls = uploaded.map((item) => item.url);
+      if (zone === "official") {
+        setNewProd((prev) => {
+          const current = prev.images || [];
+          const hasOnlyDefault =
+            current.length === 1 && current[0] === DEFAULT_PRODUCT_IMAGE;
+          const base = hasOnlyDefault ? [] : current;
+          const merged = Array.from(new Set([...base, ...uploadedUrls]));
+          return { ...prev, images: merged };
+        });
+        setErrors((prev) => {
+          const next = { ...prev };
+          delete next.images;
+          return next;
+        });
+      } else {
+        setNewProd((prev) => {
+          const current = prev.temporaryImages || [];
+          const merged = Array.from(new Set([...current, ...uploadedUrls]));
+          return { ...prev, temporaryImages: merged };
+        });
+      }
+      toast.success(
+        `Uploaded ${uploadedUrls.length} photo${
+          uploadedUrls.length > 1 ? "s" : ""
+        }`
+      );
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : "Failed to upload images";
+      setUploadError(msg);
+      toast.error(msg);
+    } finally {
+      setUploadingZone(null);
+    }
+  };
+
+  const handleUploadEditProductImages = async (
+    files: File[],
+    zone: UploadMediaZone
+  ) => {
+    if (!files || files.length === 0) return;
+    setUploadError("");
+    setUploadingZone(zone);
+    try {
+      const productName = editProd.name.trim() || editingProduct?.name || "";
+      const existingCount =
+        zone === "official"
+          ? (editProd.images || []).length
+          : (editProd.temporaryImages || []).length;
+
+      const uploaded = await uploadProductImagesAction(
+        files,
+        zone,
+        productName,
+        existingCount
+      );
+      const uploadedUrls = uploaded.map((item) => item.url);
+      if (zone === "official") {
+        setEditProd((prev) => {
+          const current = prev.images || [];
+          const merged = Array.from(new Set([...current, ...uploadedUrls]));
+          return { ...prev, images: merged };
+        });
+        setEditErrors((prev) => {
+          const next = { ...prev };
+          delete next.images;
+          return next;
+        });
+      } else {
+        setEditProd((prev) => {
+          const current = prev.temporaryImages || [];
+          const merged = Array.from(new Set([...current, ...uploadedUrls]));
+          return { ...prev, temporaryImages: merged };
+        });
+      }
+      toast.success(
+        `Uploaded ${uploadedUrls.length} photo${
+          uploadedUrls.length > 1 ? "s" : ""
+        }`
+      );
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : "Failed to upload images";
+      setUploadError(msg);
+      toast.error(msg);
+    } finally {
+      setUploadingZone(null);
+    }
+  };
+
+  const handleUploadShareTempImages = async (
+    files: File[]
+  ): Promise<string[]> => {
+    if (!files || files.length === 0) return [];
+    setUploadError("");
+    setUploadingZone("temporary");
+    try {
+      const productName = sharingProduct?.name || "";
+      const existingCount = sharingProduct?.temporaryImages?.length || 0;
+      const uploaded = await uploadProductImagesAction(
+        files,
+        "temporary",
+        productName,
+        existingCount
+      );
+      toast.success(
+        `Uploaded ${uploaded.length} temp photo${
+          uploaded.length > 1 ? "s" : ""
+        }`
+      );
+      return uploaded.map((item) => item.url);
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : "Failed to upload images";
+      setUploadError(msg);
+      toast.error(msg);
+      return [];
+    } finally {
+      setUploadingZone(null);
+    }
   };
 
   const handleCreateProduct = async () => {
@@ -222,27 +398,35 @@ export function useAdminProducts() {
         fieldErrors[String(issue.path[0])] = issue.message;
       }
       setErrors(fieldErrors);
+      toast.error(parsed.error.issues[0]?.message || "Please check form fields");
       return;
     }
 
     setErrors({});
     setActionLoading(true);
-    setStatusMessage("Saving product to Neon Database...");
 
     try {
       const createdItem = await createAdminProductAction(parsed.data);
       addProduct(createdItem);
+      if (
+        parsed.data.category === "Collection" &&
+        parsed.data.comboItemIds &&
+        parsed.data.comboItemIds.length > 0
+      ) {
+        const refreshed = await getAdminProductsAction().catch(() => null);
+        if (refreshed) {
+          setProducts(refreshed);
+        }
+      }
       setIsCreating(false);
       resetForm();
-      setStatusMessage("Product created successfully in database!");
-      setTimeout(() => setStatusMessage(""), 3000);
+      toast.success("Product created successfully");
     } catch {
       // Fallback: save to client store
-      const localItem = addProduct(parsed.data);
+      addProduct(parsed.data);
       setIsCreating(false);
       resetForm();
-      setStatusMessage("Product saved to local catalog!");
-      setTimeout(() => setStatusMessage(""), 3000);
+      toast.success("Product saved to catalog");
     } finally {
       setActionLoading(false);
     }
@@ -251,23 +435,7 @@ export function useAdminProducts() {
   const openEditProduct = (product: Product) => {
     setEditingProduct(product);
     setSelectedProductId(product.id);
-    setEditProd({
-      name: product.name,
-      color: product.color || "Standard",
-      colorHex: product.colorHex || "#111111",
-      price: product.price,
-      costPrice: product.costPrice,
-      category: product.category,
-      sizes: product.sizes || ["M"],
-      images: product.images || ["/images/products/p1-01.jpg"],
-      temporaryImages: product.temporaryImages || [],
-      isNew: product.isNew ?? true,
-      isSale: product.isSale ?? false,
-      isSoldOut: product.isSoldOut ?? false,
-      comboId: product.comboId,
-      comboTitle: product.comboTitle,
-      description: product.description || "",
-    });
+    setEditProd(mapProductToEditForm(product));
     setEditErrors({});
   };
 
@@ -292,21 +460,39 @@ export function useAdminProducts() {
     selectedImages: string[],
     extraTempImages?: string[]
   ): Promise<{ shareCode: string; shareUrl: string } | null> => {
-    setActionLoading(true);
-
     const target = products.find((p) => p.id === productId);
     const origin =
       typeof window !== "undefined"
         ? window.location.origin
         : "http://localhost:3000";
 
+    const currentShared =
+      target?.sharedImages && target.sharedImages.length > 0
+        ? target.sharedImages
+        : [...(target?.images || []), ...(target?.temporaryImages || [])];
+
+    const tempChanged = Boolean(
+      target &&
+        extraTempImages &&
+        !areStringArraysEqual(extraTempImages, target.temporaryImages || [])
+    );
+    const shareSelectionChanged =
+      !target?.shareCode ||
+      !areStringArraysEqual(selectedImages, currentShared);
+
+    // Skip API call if nothing changed and shareCode already exists
+    if (target?.shareCode && !tempChanged && !shareSelectionChanged) {
+      return {
+        shareCode: target.shareCode,
+        shareUrl: `${origin}/share/${target.shareCode}`,
+      };
+    }
+
+    setActionLoading(true);
+
     try {
       // If new temporary images were added inside the share modal, persist them first
-      if (
-        target &&
-        extraTempImages &&
-        extraTempImages.length !== (target.temporaryImages?.length || 0)
-      ) {
+      if (target && extraTempImages && tempChanged) {
         await updateAdminProductAction(productId, {
           temporaryImages: extraTempImages,
         });
@@ -361,6 +547,12 @@ export function useAdminProducts() {
   const handleUpdateProduct = async () => {
     if (!editingProduct) return;
 
+    if (!hasProductFormChanged(editingProduct, editProd)) {
+      setEditingProduct(null);
+      toast.info("No changes to save");
+      return;
+    }
+
     const parsed = UpsertProductSchema.safeParse(editProd);
     if (!parsed.success) {
       const fieldErrors: Record<string, string> = {};
@@ -368,25 +560,29 @@ export function useAdminProducts() {
         fieldErrors[String(issue.path[0])] = issue.message;
       }
       setEditErrors(fieldErrors);
+      toast.error(parsed.error.issues[0]?.message || "Please check form fields");
       return;
     }
 
     setEditErrors({});
     setActionLoading(true);
-    setStatusMessage("Updating product in database...");
 
     try {
       await updateAdminProductAction(editingProduct.id, parsed.data);
       updateProduct(editingProduct.id, parsed.data);
+      if (parsed.data.comboItemIds !== undefined) {
+        const refreshed = await getAdminProductsAction().catch(() => null);
+        if (refreshed) {
+          setProducts(refreshed);
+        }
+      }
       setEditingProduct(null);
-      setStatusMessage("Product updated successfully!");
-      setTimeout(() => setStatusMessage(""), 3000);
+      toast.success("Product updated successfully");
     } catch {
       // Fallback update local store
       updateProduct(editingProduct.id, parsed.data);
       setEditingProduct(null);
-      setStatusMessage("Product updated in catalog!");
-      setTimeout(() => setStatusMessage(""), 3000);
+      toast.success("Product updated in catalog");
     } finally {
       setActionLoading(false);
     }
@@ -398,43 +594,54 @@ export function useAdminProducts() {
     newStock: number
   ) => {
     setActionLoading(true);
-    setStatusMessage("Updating inventory in database...");
 
     try {
       await updateAdminStockAction(productId, newStock);
       updateVariantStock(productId, variantId, newStock);
-      setStatusMessage("Stock updated in database!");
-      setTimeout(() => setStatusMessage(""), 2000);
+      toast.success("Stock updated");
     } catch {
       updateVariantStock(productId, variantId, newStock);
-      setStatusMessage("Stock updated locally!");
-      setTimeout(() => setStatusMessage(""), 2000);
+      toast.success("Stock updated locally");
     } finally {
       setActionLoading(false);
     }
   };
 
-  const handleDeleteProduct = async (productId: number | string, productName: string) => {
-    if (confirm(`Delete ${productName}?`)) {
-      setActionLoading(true);
-      try {
-        await deleteAdminProductAction(productId);
-        deleteProduct(productId);
-        if (selectedProductId === productId) {
-          setSelectedProductId(null);
-        }
-        if (editingProduct?.id === productId) {
-          setEditingProduct(null);
-        }
-        setStatusMessage("Product deleted from database!");
-        setTimeout(() => setStatusMessage(""), 2000);
-      } catch {
-        deleteProduct(productId);
-        setStatusMessage("Product deleted from catalog!");
-        setTimeout(() => setStatusMessage(""), 2000);
-      } finally {
-        setActionLoading(false);
+  const handleDeleteProduct = (
+    productId: number | string,
+    productName: string
+  ) => {
+    setDeletingProductTarget({ id: productId, name: productName });
+  };
+
+  const cancelDeleteProduct = () => {
+    if (!actionLoading) {
+      setDeletingProductTarget(null);
+    }
+  };
+
+  const confirmDeleteProduct = async () => {
+    if (!deletingProductTarget) return;
+    const { id: productId, name: productName } = deletingProductTarget;
+
+    setActionLoading(true);
+    try {
+      await deleteAdminProductAction(productId);
+      deleteProduct(productId);
+      if (selectedProductId === productId) {
+        setSelectedProductId(null);
       }
+      if (editingProduct?.id === productId) {
+        setEditingProduct(null);
+      }
+      setDeletingProductTarget(null);
+      toast.success(`Deleted "${productName}"`);
+    } catch {
+      deleteProduct(productId);
+      setDeletingProductTarget(null);
+      toast.success(`Deleted "${productName}"`);
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -483,10 +690,18 @@ export function useAdminProducts() {
     statusMessage,
     newProd,
     errors,
+    uploadingZone,
+    uploadError,
     updateNewProdField,
+    handleUploadNewProductImages,
+    handleUploadEditProductImages,
+    handleUploadShareTempImages,
     handleCreateProduct,
     handleStockChange,
     handleDeleteProduct,
+    deletingProductTarget,
+    cancelDeleteProduct,
+    confirmDeleteProduct,
     toggleSelectProduct,
     setSelectedProductId,
   };

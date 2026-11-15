@@ -317,8 +317,14 @@ const SEED_PRODUCTS: SeedProductItem[] = [
 async function main() {
   console.log("🌱 Starting database seeding...");
 
-  const adminEmail = process.env.ADMIN_SEED_EMAIL || "admin@tage.studio";
-  const adminPassword = process.env.ADMIN_SEED_PASSWORD || "password123456";
+  const adminEmail = process.env.ADMIN_SEED_EMAIL?.trim();
+  const adminPassword = process.env.ADMIN_SEED_PASSWORD?.trim();
+
+  if (!adminEmail || !adminPassword) {
+    throw new Error(
+      "Missing ADMIN_SEED_EMAIL or ADMIN_SEED_PASSWORD in environment variables (.env)"
+    );
+  }
 
   // 1. Seed or update Admin User
   let adminUser = await prisma.user.findUnique({

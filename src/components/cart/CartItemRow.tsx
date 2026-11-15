@@ -2,7 +2,11 @@
 
 import Link from "next/link";
 import { CartItem } from "@/types";
-import { money, getSafeProductImage } from "@/config/utils";
+import {
+  money,
+  getSafeProductImage,
+  handleProductImageError,
+} from "@/config/utils";
 
 interface CartItemRowProps {
   item: CartItem;
@@ -26,10 +30,7 @@ export function CartItemRow({ item, onRemove }: CartItemRowProps) {
           src={getSafeProductImage(item.product)}
           alt={item.product.name}
           className="w-full h-full object-cover"
-          onError={(e) => {
-            (e.currentTarget as HTMLImageElement).src =
-              "/images/products/p1-01.jpg";
-          }}
+          onError={handleProductImageError}
         />
       </Link>
 

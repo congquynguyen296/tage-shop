@@ -2,18 +2,58 @@ import "server-only";
 import { prisma } from "@/server/db/client";
 import {
   mapPrismaItemToProduct,
+  PrismaItemImageRecord,
   PrismaItemWithRelations,
 } from "@/server/db/mappers";
 import {
   SaveProductShareInput,
   UpsertProductInput,
 } from "@/service/products/schema";
-import { slugify } from "@/config/utils";
-import { Product } from "@/types";
+import { DEFAULT_PRODUCT_IMAGE, slugify } from "@/config/utils";
+import { ComboPiece, Product, ProductCategory } from "@/types";
+import { extractImageStorageKey } from "./upload";
 
 export interface AdminActor {
   id: string;
   email: string;
+}
+
+async function fetchComboPiecesByComboId(
+  comboId: string | null | undefined,
+  excludeItemId: string
+): Promise<ComboPiece[] | undefined> {
+  if (!comboId) return undefined;
+  const siblings: PrismaItemWithRelations[] = await prisma.item.findMany({
+    where: {
+      comboId,
+      id: { not: excludeItemId },
+    },
+    include: {
+      category: true,
+      images: { orderBy: { sortOrder: "asc" } },
+    },
+    orderBy: { createdAt: "asc" },
+  });
+  if (siblings.length === 0) return undefined;
+  return siblings.map((piece: PrismaItemWithRelations) => {
+    const officialImg =
+      piece.images.find((i: PrismaItemImageRecord) => !i.isTemporary)?.url ||
+      piece.images[0]?.url ||
+      DEFAULT_PRODUCT_IMAGE;
+    return {
+      id: piece.id,
+      slug: piece.slug,
+      name: piece.title,
+      category: (piece.category?.name || "Outerwear") as ProductCategory,
+      price: Math.round(piece.priceMinor / 100),
+      originalPrice: piece.originalPriceMinor
+        ? Math.round(piece.originalPriceMinor / 100)
+        : undefined,
+      image: officialImg,
+      isSoldOut: piece.status === "SOLD",
+      size: piece.sizeLabel || "OS",
+    };
+  });
 }
 
 /**
@@ -40,21 +80,33 @@ export async function createAdminProductInDb(
   const slug = `${slugify(input.name)}-${timestamp}`;
 
   const allImages = [
-    ...(input.images || ["/images/products/p1-01.jpg"]).map(
-      (url: string, idx: number) => ({
-        url,
-        storageKey: `local-${sku}-${idx}`,
-        sortOrder: idx,
-        isTemporary: false,
-      })
-    ),
+    ...(input.images && input.images.length > 0
+      ? input.images
+      : [DEFAULT_PRODUCT_IMAGE]
+    ).map((url: string, idx: number) => ({
+      url,
+      storageKey: extractImageStorageKey(url, `local-${sku}`, idx),
+      sortOrder: idx,
+      isTemporary: false,
+    })),
     ...(input.temporaryImages || []).map((url: string, idx: number) => ({
       url,
-      storageKey: `temp-${sku}-${idx}`,
+      storageKey: extractImageStorageKey(url, `temp-${sku}`, idx),
       sortOrder: 100 + idx,
       isTemporary: true,
     })),
   ];
+
+  const isCollection = input.category === "Collection";
+  const hasSelectedComboPieces = Boolean(
+    input.comboItemIds && input.comboItemIds.length > 0
+  );
+  const resolvedComboId =
+    input.comboId ||
+    (isCollection && hasSelectedComboPieces ? `combo-${slug}` : null);
+  const resolvedComboTitle =
+    input.comboTitle ||
+    (resolvedComboId ? input.name : null);
 
   const newItem: PrismaItemWithRelations = await prisma.item.create({
     data: {
@@ -73,8 +125,8 @@ export async function createAdminProductInDb(
       currency: "USD",
       status: input.isSoldOut ? "SOLD" : "AVAILABLE",
       isNew: input.isNew ?? true,
-      comboId: input.comboId || null,
-      comboTitle: input.comboTitle || null,
+      comboId: resolvedComboId,
+      comboTitle: resolvedComboTitle,
       createdById: actor.id,
       images: {
         create: allImages,
@@ -88,6 +140,40 @@ export async function createAdminProductInDb(
     },
   });
 
+  if (resolvedComboId && input.comboItemIds && input.comboItemIds.length > 0) {
+    const matchedItems = await prisma.item.findMany({
+      where: {
+        OR: [
+          { id: { in: input.comboItemIds } },
+          { slug: { in: input.comboItemIds } },
+        ],
+      },
+      select: { id: true, comboId: true },
+    });
+    const existingComboIds = Array.from(
+      new Set(
+        matchedItems
+          .map((m) => m.comboId)
+          .filter((cid): cid is string => Boolean(cid))
+      )
+    );
+    await prisma.item.updateMany({
+      where: {
+        OR: [
+          { id: { in: input.comboItemIds } },
+          { slug: { in: input.comboItemIds } },
+          ...(existingComboIds.length > 0
+            ? [{ comboId: { in: existingComboIds } }]
+            : []),
+        ],
+      },
+      data: {
+        comboId: resolvedComboId,
+        comboTitle: resolvedComboTitle,
+      },
+    });
+  }
+
   await prisma.auditLog.create({
     data: {
       actorId: actor.id,
@@ -100,11 +186,16 @@ export async function createAdminProductInDb(
         sku: newItem.sku,
         priceMinor: newItem.priceMinor,
         category: category.name,
+        comboId: resolvedComboId,
       },
     },
   });
 
-  return mapPrismaItemToProduct(newItem);
+  const comboPieces = await fetchComboPiecesByComboId(
+    resolvedComboId,
+    newItem.id
+  );
+  return mapPrismaItemToProduct(newItem, comboPieces);
 }
 
 /**
@@ -156,13 +247,13 @@ export async function updateAdminProductInDb(
     const rebuiltImages = [
       ...nextOfficial.map((url: string, idx: number) => ({
         url,
-        storageKey: `local-${existing.sku}-${idx}`,
+        storageKey: extractImageStorageKey(url, `local-${existing.sku}`, idx),
         sortOrder: idx,
         isTemporary: false,
       })),
       ...nextTemp.map((url: string, idx: number) => ({
         url,
-        storageKey: `temp-${existing.sku}-${idx}`,
+        storageKey: extractImageStorageKey(url, `temp-${existing.sku}`, idx),
         sortOrder: 100 + idx,
         isTemporary: true,
       })),
@@ -176,6 +267,30 @@ export async function updateAdminProductInDb(
           itemId: targetId,
         })),
       });
+    }
+  }
+
+  let nextComboId: string | null =
+    rawInput.comboId !== undefined
+      ? rawInput.comboId || null
+      : existing.comboId;
+  let nextComboTitle: string | null =
+    rawInput.comboTitle !== undefined
+      ? rawInput.comboTitle || null
+      : existing.comboTitle;
+
+  if (rawInput.comboItemIds !== undefined) {
+    if (rawInput.comboItemIds.length > 0) {
+      nextComboId =
+        nextComboId || existing.comboId || `combo-${existing.slug}`;
+      nextComboTitle =
+        nextComboTitle ||
+        rawInput.name ||
+        existing.comboTitle ||
+        existing.title;
+    } else if (!rawInput.comboId) {
+      nextComboId = null;
+      nextComboTitle = null;
     }
   }
 
@@ -207,14 +322,8 @@ export async function updateAdminProductInDb(
             : "AVAILABLE"
           : existing.status,
       isNew: rawInput.isNew !== undefined ? rawInput.isNew : existing.isNew,
-      comboId:
-        rawInput.comboId !== undefined
-          ? rawInput.comboId || null
-          : existing.comboId,
-      comboTitle:
-        rawInput.comboTitle !== undefined
-          ? rawInput.comboTitle || null
-          : existing.comboTitle,
+      comboId: nextComboId,
+      comboTitle: nextComboTitle,
       sizeLabel: rawInput.sizes
         ? rawInput.sizes.join(", ")
         : existing.sizeLabel,
@@ -225,6 +334,36 @@ export async function updateAdminProductInDb(
       images: { orderBy: { sortOrder: "asc" } },
     },
   });
+
+  if (rawInput.comboItemIds !== undefined) {
+    const oldComboId = existing.comboId || nextComboId;
+    if (oldComboId) {
+      await prisma.item.updateMany({
+        where: {
+          comboId: oldComboId,
+          id: { not: targetId },
+        },
+        data: {
+          comboId: null,
+          comboTitle: null,
+        },
+      });
+    }
+    if (nextComboId && rawInput.comboItemIds.length > 0) {
+      await prisma.item.updateMany({
+        where: {
+          OR: [
+            { id: { in: rawInput.comboItemIds } },
+            { slug: { in: rawInput.comboItemIds } },
+          ],
+        },
+        data: {
+          comboId: nextComboId,
+          comboTitle: nextComboTitle,
+        },
+      });
+    }
+  }
 
   await prisma.auditLog.create({
     data: {
@@ -238,11 +377,13 @@ export async function updateAdminProductInDb(
         priceMinor: updated.priceMinor,
         costMinor: updated.costMinor,
         status: updated.status,
+        comboId: nextComboId,
       },
     },
   });
 
-  return mapPrismaItemToProduct(updated);
+  const comboPieces = await fetchComboPiecesByComboId(nextComboId, targetId);
+  return mapPrismaItemToProduct(updated, comboPieces);
 }
 
 /**

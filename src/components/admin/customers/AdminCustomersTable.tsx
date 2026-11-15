@@ -7,8 +7,8 @@ interface AdminCustomersTableProps {
 
 export function AdminCustomersTable({ customers }: AdminCustomersTableProps) {
   return (
-    <div className="card border line bg-white overflow-hidden">
-      <table className="w-full text-left text-xs border-collapse">
+    <div className="card border line bg-white overflow-x-auto">
+      <table className="w-full min-w-[560px] text-left text-xs border-collapse">
         <thead>
           <tr className="border-b line bg-neutral-50 tracking-wider uppercase text-[11px] mute">
             <th className="p-4">Customer Name</th>

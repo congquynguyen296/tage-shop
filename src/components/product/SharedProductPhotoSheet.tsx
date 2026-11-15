@@ -1,6 +1,7 @@
 "use client";
 
 import { Product } from "@/types";
+import { handleProductImageError } from "@/config/utils";
 
 interface SharedProductPhotoSheetProps {
   productName: string;
@@ -51,10 +52,7 @@ export function SharedProductPhotoSheet({
                 alt={`${productName} — View ${idx + 1}`}
                 loading="lazy"
                 className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).src =
-                    "/images/products/p1-01.jpg";
-                }}
+                onError={handleProductImageError}
               />
               <div className="absolute bottom-3 left-3 flex items-center gap-2">
                 <span className="bg-black/75 text-white text-[10px] tracking-[0.2em] uppercase px-2.5 py-1 font-mono">

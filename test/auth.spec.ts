@@ -164,8 +164,8 @@ describe("TAGE Auth Module Specification & Error Testing", () => {
   // 3. ADMIN AUTHORIZATION & SECURITY GUARDS (requireUser, requireAdmin)
   // ---------------------------------------------------------------------------
   describe("3. Security Guards & RBAC", () => {
-    const adminEmail = process.env.ADMIN_SEED_EMAIL || "admin@tage.studio";
-    const adminPassword = process.env.ADMIN_SEED_PASSWORD || "password123456";
+    const adminEmail = process.env.ADMIN_SEED_EMAIL || "";
+    const adminPassword = process.env.ADMIN_SEED_PASSWORD || "";
 
     it("should authenticate seeded Admin user and verify 'admin' role", async () => {
       const res = await auth.api.signInEmail({

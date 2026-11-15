@@ -1,4 +1,5 @@
 import { shipFee } from "@/config/utils";
+import { SERVICE_CONSTANTS } from "@/config/routes";
 import { ApiResponse, CartItem, Order, OrderStatus } from "@/types";
 import { CheckoutFormInput, CheckoutFormSchema } from "./schema";
 
@@ -27,7 +28,9 @@ export async function submitOrderAction(
 
   const newOrder: Order = {
     id: `ord-${Date.now()}`,
-    orderNumber: `TG-${Math.floor(100000 + Math.random() * 900000)}`,
+    orderNumber: `${SERVICE_CONSTANTS.ORDER_NUMBER_PREFIX}-${Math.floor(
+      100000 + Math.random() * 900000
+    )}`,
     customerEmail: form.email,
     customerName: `${form.first} ${form.last}`.trim(),
     shippingAddress: {

@@ -51,10 +51,10 @@ export function AdminProductSearchBar({
     <div className="space-y-3 pb-4 border-b line">
       <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
         {/* Left: Search + Filter Controls */}
-        <div className="flex flex-wrap items-center gap-3 flex-1">
+        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 flex-1">
           {/* Search Input */}
-          <div className="relative min-w-[220px] flex-1 max-w-xs">
-            <span className="absolute inset-y-0 left-0 flex items-center pointer-events-none text-neutral-400">
+          <div className="relative w-full sm:w-auto sm:min-w-[220px] sm:flex-1 sm:max-w-xs">
+            <span className="absolute inset-y-0 left-2.5 flex items-center pointer-events-none text-neutral-400">
               <svg
                 className="w-4 h-4"
                 fill="none"
@@ -74,7 +74,7 @@ export function AdminProductSearchBar({
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder="Search products by name..."
-              className="w-full pl-7 pr-7 py-2 text-xs bg-white border line focus:border-black outline-none transition-colors placeholder:text-neutral-400"
+              className="w-full pl-8 pr-7 py-2 text-xs bg-white border line focus:border-black outline-none transition-colors placeholder:text-neutral-400"
             />
             {searchQuery && (
               <button
@@ -94,7 +94,7 @@ export function AdminProductSearchBar({
             value={categoryFilter}
             onChange={(e) => onCategoryFilterChange(e.target.value)}
             aria-label="Filter by category"
-            className="bg-white border line px-3 py-2 text-xs outline-none focus:border-black transition-colors"
+            className="flex-1 sm:flex-initial min-w-[125px] bg-white border line px-3 py-2 text-xs outline-none focus:border-black transition-colors"
           >
             <option value="All">All Categories</option>
             {PRODUCT_CATEGORIES.map((cat) => (
@@ -109,7 +109,7 @@ export function AdminProductSearchBar({
             value={sizeFilter}
             onChange={(e) => onSizeFilterChange(e.target.value)}
             aria-label="Filter by size"
-            className="bg-white border line px-3 py-2 text-xs outline-none focus:border-black transition-colors"
+            className="flex-1 sm:flex-initial min-w-[115px] bg-white border line px-3 py-2 text-xs outline-none focus:border-black transition-colors"
           >
             <option value="All">All Sizes</option>
             <optgroup label="Letter Sizes">
@@ -135,7 +135,7 @@ export function AdminProductSearchBar({
               onStatusFilterChange(e.target.value as AdminAvailabilityFilter)
             }
             aria-label="Filter by availability"
-            className="bg-white border line px-3 py-2 text-xs outline-none focus:border-black transition-colors"
+            className="flex-1 sm:flex-initial min-w-[115px] bg-white border line px-3 py-2 text-xs outline-none focus:border-black transition-colors"
           >
             <option value="all">All Status</option>
             <option value="available">Available</option>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { INSTAGRAM_SHOP_URL } from "@/config/utils";
+import { STOREFRONT_LOCKED } from "@/config/routes";
 
 const FOOTER_COLUMNS: Array<[string, Array<[string, string]>]> = [
   [
@@ -45,22 +46,38 @@ export function Footer() {
     return null;
   }
 
+  const isSharePage = pathname?.startsWith("/share");
+  const visibleColumns =
+    STOREFRONT_LOCKED || isSharePage
+      ? FOOTER_COLUMNS.filter(([heading]) => heading === "Connect")
+      : FOOTER_COLUMNS;
+
   return (
     <footer className="border-t line bg-[color:var(--bg)]">
       <div className="w-full px-5 sm:px-8 md:px-12 lg:px-16 py-14 grid grid-cols-2 md:grid-cols-4 gap-10 text-sm">
         <div className="col-span-2 md:col-span-1">
-          <Link href="/" className="inline-block mb-4" aria-label="TAGE Home">
-            <img
-              src="/logo/tage_logo.png"
-              alt="TAGE"
-              className="h-16 md:h-20 w-auto object-contain"
-            />
-          </Link>
+          {STOREFRONT_LOCKED || isSharePage ? (
+            <div className="inline-block mb-4" aria-label="TAGE">
+              <img
+                src="/logo/tage_logo.png"
+                alt="TAGE"
+                className="h-16 md:h-20 w-auto object-contain"
+              />
+            </div>
+          ) : (
+            <Link href="/" className="inline-block mb-4" aria-label="TAGE Home">
+              <img
+                src="/logo/tage_logo.png"
+                alt="TAGE"
+                className="h-16 md:h-20 w-auto object-contain"
+              />
+            </Link>
+          )}
           <p className="mute max-w-[260px] leading-relaxed">
             Buying clothes isn't just buying clothes, it's buying happiness.
           </p>
         </div>
-        {FOOTER_COLUMNS.map(([heading, links]) => (
+        {visibleColumns.map(([heading, links]) => (
           <div key={heading}>
             <div className="text-[11px] tracking-[0.3em] uppercase font-semibold mb-4 text-[color:var(--fg)]">
               {heading}

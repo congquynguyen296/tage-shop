@@ -8,6 +8,7 @@ import {
   INSTAGRAM_HANDLE,
   generateInstagramOrderMessage,
 } from "@/config/utils";
+import { toast } from "@/service/ui/store";
 import { useCart } from "@/hooks/useCart";
 
 export function CartSummary() {
@@ -54,6 +55,7 @@ export function CartSummary() {
     if (typeof navigator !== "undefined" && navigator?.clipboard?.writeText) {
       navigator.clipboard.writeText(message).catch(() => {});
       setCopied(true);
+      toast.success("Order summary copied to clipboard");
       setTimeout(() => setCopied(false), 6000);
     }
 

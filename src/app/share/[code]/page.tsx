@@ -30,7 +30,7 @@ export default function ShareProductPage({
 
   if (loading && !product) {
     return (
-      <section className="w-full px-5 sm:px-8 md:px-12 lg:px-14 py-10">
+      <section className="w-full px-4 sm:px-8 md:px-12 lg:px-14 py-6 sm:py-10">
         <ProductDetailSkeleton />
       </section>
     );
@@ -41,9 +41,9 @@ export default function ShareProductPage({
   }
 
   return (
-    <section className="w-full px-5 sm:px-8 md:px-12 lg:px-14 py-10">
+    <section className="w-full px-4 sm:px-8 md:px-12 lg:px-14 py-6 sm:py-10">
       {/* Main Split View: Gallery + Product Details & Instagram Purchase Action */}
-      <div className="grid md:grid-cols-[1fr_460px] gap-8 md:gap-12">
+      <div className="grid grid-cols-1 md:grid-cols-[1fr_400px] lg:grid-cols-[1fr_460px] gap-6 sm:gap-8 md:gap-12">
         <ProductGallery
           product={product}
           activeIndex={activeImageIndex}

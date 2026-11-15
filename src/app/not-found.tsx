@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { APP_ROUTES, STOREFRONT_LOCKED } from "@/config/routes";
 
 export default function NotFound() {
   return (
@@ -16,15 +17,23 @@ export default function NotFound() {
         The piece or editorial you are looking for may have been archived or moved.
       </p>
       <div className="flex gap-3">
-        <Link href="/" className="btn">
-          Return Home
-        </Link>
-        <Link
-          href="/shop"
-          className="border border-current text-xs tracking-[0.25em] uppercase px-7 py-3.5"
-        >
-          Explore Shop
-        </Link>
+        {STOREFRONT_LOCKED ? (
+          <Link href={APP_ROUTES.ADMIN.DASHBOARD} className="btn">
+            Go to Admin Console
+          </Link>
+        ) : (
+          <>
+            <Link href={APP_ROUTES.STOREFRONT.HOME} className="btn">
+              Return Home
+            </Link>
+            <Link
+              href={APP_ROUTES.STOREFRONT.SHOP}
+              className="border border-current text-xs tracking-[0.25em] uppercase px-7 py-3.5"
+            >
+              Explore Shop
+            </Link>
+          </>
+        )}
       </div>
     </main>
   );

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { TopProgressBar } from "@/components/layout/TopProgressBar";
+import { ToastContainer } from "@/components/ui/ToastContainer";
 import "./globals.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
@@ -39,6 +40,7 @@ export default function RootLayout({
       </head>
       <body>
         <TopProgressBar />
+        <ToastContainer />
         {children}
       </body>
     </html>

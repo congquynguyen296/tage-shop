@@ -9,6 +9,27 @@ import {
 } from "@/server/db/mappers";
 import { ProductFilterInput } from "@/service/products/schema";
 import { ComboPiece, PaginatedResponse, Product, ProductCategory } from "@/types";
+import { DEFAULT_PRODUCT_IMAGE } from "@/config/utils";
+
+function mapSiblingToComboPiece(piece: PrismaItemWithRelations): ComboPiece {
+  const officialImg =
+    piece.images.find((i: PrismaItemImageRecord) => !i.isTemporary)?.url ||
+    piece.images[0]?.url ||
+    DEFAULT_PRODUCT_IMAGE;
+  return {
+    id: piece.id,
+    slug: piece.slug,
+    name: piece.title,
+    category: (piece.category?.name || "Outerwear") as ProductCategory,
+    price: Math.round(piece.priceMinor / 100),
+    originalPrice: piece.originalPriceMinor
+      ? Math.round(piece.originalPriceMinor / 100)
+      : undefined,
+    image: officialImg,
+    isSoldOut: piece.status === "SOLD",
+    size: piece.sizeLabel || "OS",
+  };
+}
 
 /**
  * Fetch specific products by an array of IDs or slugs
@@ -218,26 +239,12 @@ export async function findProductDetailBySlug(
     });
 
     if (siblingItems.length > 0) {
-      comboPieces = siblingItems.map((piece: PrismaItemWithRelations) => {
-        const officialImg =
-          piece.images.find((i: PrismaItemImageRecord) => !i.isTemporary)
-            ?.url ||
-          piece.images[0]?.url ||
-          "/images/products/p1-01.jpg";
-        return {
-          id: piece.id,
-          slug: piece.slug,
-          name: piece.title,
-          category: (piece.category?.name || "Outerwear") as ProductCategory,
-          price: Math.round(piece.priceMinor / 100),
-          originalPrice: piece.originalPriceMinor
-            ? Math.round(piece.originalPriceMinor / 100)
-            : undefined,
-          image: officialImg,
-          isSoldOut: piece.status === "SOLD",
-          size: piece.sizeLabel || "OS",
-        };
-      });
+      const isCollectionItem =
+        item.category?.name?.toLowerCase() === "collection";
+      const filteredSiblings = isCollectionItem
+        ? siblingItems.filter((s: PrismaItemWithRelations) => s.id !== item.id)
+        : siblingItems;
+      comboPieces = filteredSiblings.map(mapSiblingToComboPiece);
     }
   }
 
@@ -320,7 +327,26 @@ export async function findSharedProductByCode(
 
   if (!item) return null;
 
-  const product = mapPrismaItemToProduct(item);
+  let comboPieces: ComboPiece[] | undefined;
+  if (item.comboId) {
+    const siblingItems: PrismaItemWithRelations[] = await prisma.item.findMany({
+      where: {
+        comboId: item.comboId,
+        id: { not: item.id },
+        status: { in: ["AVAILABLE", "SOLD"] },
+      },
+      include: {
+        category: true,
+        images: { orderBy: { sortOrder: "asc" } },
+      },
+      orderBy: { createdAt: "asc" },
+    });
+    if (siblingItems.length > 0) {
+      comboPieces = siblingItems.map(mapSiblingToComboPiece);
+    }
+  }
+
+  const product = mapPrismaItemToProduct(item, comboPieces);
   const allAvailableImages = [
     ...product.images,
     ...(product.temporaryImages || []),
@@ -351,9 +377,19 @@ export async function findAllAdminProducts(): Promise<Product[]> {
     orderBy: { createdAt: "desc" },
   });
 
-  return items.map((item: PrismaItemWithRelations) =>
-    mapPrismaItemToProduct(item)
-  );
+  return items.map((item: PrismaItemWithRelations) => {
+    let comboPieces: ComboPiece[] | undefined;
+    if (item.comboId) {
+      const siblings = items.filter(
+        (other: PrismaItemWithRelations) =>
+          other.comboId === item.comboId && other.id !== item.id
+      );
+      if (siblings.length > 0) {
+        comboPieces = siblings.map(mapSiblingToComboPiece);
+      }
+    }
+    return mapPrismaItemToProduct(item, comboPieces);
+  });
 }
 
 /**
