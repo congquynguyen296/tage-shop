@@ -1,7 +1,15 @@
 const cookiePrefix = process.env.NEXT_PUBLIC_AUTH_COOKIE_PREFIX || "tage";
+const vercelProductionUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
+  ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+  : undefined;
+const vercelBranchUrl = process.env.VERCEL_URL
+  ? `https://${process.env.VERCEL_URL}`
+  : undefined;
 const siteUrl =
   process.env.BETTER_AUTH_URL ||
   process.env.NEXT_PUBLIC_SITE_URL ||
+  vercelProductionUrl ||
+  vercelBranchUrl ||
   "http://localhost:3000";
 
 export const AUTH_CONFIG = {
@@ -11,6 +19,10 @@ export const AUTH_CONFIG = {
       [
         siteUrl,
         process.env.NEXT_PUBLIC_SITE_URL,
+        vercelProductionUrl,
+        vercelBranchUrl,
+        "https://*.vercel.app",
+        "https://tage-shop-seven.vercel.app",
         ...(process.env.AUTH_TRUSTED_ORIGINS?.split(",").map((s) => s.trim()) ||
           []),
         "http://localhost:3000",
