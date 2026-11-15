@@ -1,0 +1,277 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// -----------------------------------------------------------------------------
+// 1. BETTER AUTH MODELS (user, session, account, verification, twoFactor, rateLimit)
+// -----------------------------------------------------------------------------
+
+model User {
+  id               String           @id @default(cuid())
+  name             String
+  email            String           @unique
+  emailVerified    Boolean          @default(false)
+  image            String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  // Plugin: admin
+  role             String           @default("user") // "admin" | "user"
+  banned           Boolean?         @default(false)
+  banReason        String?
+  banExpires       DateTime?
+
+  // Plugin: twoFactor
+  twoFactorEnabled Boolean?         @default(false)
+
+  // Relations
+  sessions         Session[]
+  accounts         Account[]
+  twoFactor        TwoFactor?
+  cartItems        CartItem[]
+  recentlyViewed   RecentlyViewed[]
+
+  @@map("user")
+}
+
+model Session {
+  id             String    @id @default(cuid())
+  token          String    @unique
+  expiresAt      DateTime
+  ipAddress      String?
+  userAgent      String?
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  impersonatedBy String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?   // Hash of password for email/password credentials
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String    @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+model TwoFactor {
+  id                      String    @id @default(cuid())
+  secret                  String
+  backupCodes             String
+  userId                  String    @unique
+  user                    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  verified                Boolean   @default(true)
+  failedVerificationCount Int       @default(0)
+  lockedUntil             DateTime?
+
+  @@map("twoFactor")
+}
+
+model RateLimit {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  count       Int
+  lastRequest BigInt
+
+  @@map("rateLimit")
+}
+
+// -----------------------------------------------------------------------------
+// 2. CATALOG & SECOND-HAND GARMENT MODELS (1-of-1 Unique Archive Pieces)
+// -----------------------------------------------------------------------------
+
+enum ItemCondition {
+  NEW_WITH_TAGS
+  EXCELLENT
+  GOOD
+  FAIR
+}
+
+enum ItemStatus {
+  DRAFT
+  AVAILABLE
+  RESERVED
+  SOLD
+  ARCHIVED
+}
+
+enum ImageKind {
+  FRONT
+  BACK
+  SIDE
+  DETAIL
+  LABEL
+  FLAW
+  WORN
+}
+
+model Category {
+  id             String     @id @default(cuid())
+  parentId       String?
+  parent         Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children       Category[] @relation("CategoryHierarchy")
+  name           String
+  slug           String     @unique
+  description    String?
+  sortOrder      Int        @default(0)
+  isActive       Boolean    @default(true)
+  seoTitle       String?
+  seoDescription String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  items          Item[]
+
+  @@index([parentId])
+  @@index([isActive, sortOrder])
+  @@map("categories")
+}
+
+model Item {
+  id                 String           @id @default(cuid())
+  sku                String           @unique
+  slug               String           @unique
+  title              String
+  description        String
+  categoryId         String
+  category           Category         @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  sizeLabel          String?
+  color              String?
+  material           String?
+  condition          ItemCondition    @default(EXCELLENT)
+  conditionNote      String?
+  measurements       Json?
+  weightGrams        Int              @default(500)
+  priceMinor         Int              // In cents USD
+  originalPriceMinor Int?
+  currency           String           @default("USD")
+  status             ItemStatus       @default(AVAILABLE)
+  isNew              Boolean          @default(true)
+  publishedAt        DateTime?        @default(now())
+  soldAt             DateTime?
+  costMinor          Int?             // Internal admin cost
+  comboId            String?          // Grouping ID for combo / look items
+  comboTitle         String?          // Title for the combo look
+  shareCode          String?          // Saved share link slug/code for customer inquiry
+  sharedImages       String[]         @default([]) // Selected official + temp image URLs for the share page
+  sourceNote         String?          // Internal sourcing note
+  createdById        String?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  images             ItemImage[]
+  cartItems          CartItem[]
+  recentlyViewed     RecentlyViewed[]
+
+  @@index([status, createdAt(sort: Desc)])
+  @@index([categoryId, status])
+  @@index([comboId])
+  @@index([shareCode])
+  @@map("items")
+}
+
+model ItemImage {
+  id          String    @id @default(cuid())
+  itemId      String
+  item        Item      @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  url         String
+  storageKey  String
+  kind        ImageKind @default(FRONT)
+  alt         String?
+  width       Int?
+  height      Int?
+  sortOrder   Int       @default(0)
+  isTemporary Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+
+  @@index([itemId, sortOrder])
+  @@map("item_images")
+}
+
+// -----------------------------------------------------------------------------
+// 3. CUSTOMER CART & RECENTLY VIEWED (MVP)
+// -----------------------------------------------------------------------------
+
+// Domain note: Each archive piece is 1-of-1 (unique), so quantity is always 1.
+// The composite unique index [userId, itemId] prevents duplicate additions.
+model CartItem {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  itemId    String
+  item      Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, itemId])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("cart_items")
+}
+
+model RecentlyViewed {
+  id       String   @id @default(cuid())
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  itemId   String
+  item     Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  viewedAt DateTime @default(now())
+
+  @@unique([userId, itemId])
+  @@index([userId, viewedAt(sort: Desc)])
+  @@map("recently_viewed_items")
+}
+
+// -----------------------------------------------------------------------------
+// 4. AUDIT LOGS
+// -----------------------------------------------------------------------------
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actorEmail String?
+  action     String
+  entityType String
+  entityId   String
+  before     Json?
+  after      Json?
+  ip         String?
+  userAgent  String?
+  requestId  String?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId, createdAt])
+  @@index([actorId, createdAt])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
